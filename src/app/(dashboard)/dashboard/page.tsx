@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { getIracingId } from "@/lib/auth";
 import { getAccessToken } from "@/lib/iracing-oauth";
 import { iracingDataGet } from "@/lib/iracing-api";
+import { MOCK_SEASON } from "@/lib/mock-schedule";
+import { getRecommendations } from "@/lib/recommendations";
+import { RecommendationsList } from "@/components/recommendations-list";
 import { Button } from "@/components/ui/button";
 
 type Props = { searchParams: Promise<{ error?: string }> };
@@ -16,6 +19,13 @@ export default async function DashboardPage({ searchParams }: Props) {
     : { ok: false as const, status: 401, error: "Not connected" };
   const params = await searchParams;
   const oauthNotConfigured = params.error === "oauth_not_configured";
+
+  // Use mock recommendations until we have live API data; same UI will show real data later
+  const hasLiveData = apiTest.ok;
+  const recommendations = hasLiveData
+    ? [] // TODO: fetch season/schedule from API and call getRecommendations(season)
+    : getRecommendations(MOCK_SEASON, { limit: 5 });
+  const isMockRecommendations = !hasLiveData && recommendations.length > 0;
 
   return (
     <div className="space-y-6">
@@ -71,6 +81,19 @@ export default async function DashboardPage({ searchParams }: Props) {
             )}
           </div>
         )}
+      </section>
+
+      <section className="rounded-lg border bg-card p-4">
+        <h2 className="text-sm font-medium">SR-friendly recommendations</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Races ranked by length and lap count to help maximize Safety Rating.
+        </p>
+        <div className="mt-3">
+          <RecommendationsList
+            recommendations={recommendations}
+            isMock={isMockRecommendations}
+          />
+        </div>
       </section>
     </div>
   );
