@@ -5,13 +5,17 @@ import { getAccessToken } from "@/lib/iracing-oauth";
 import { iracingDataGet } from "@/lib/iracing-api";
 import { Button } from "@/components/ui/button";
 
-export default async function DashboardPage() {
+type Props = { searchParams: Promise<{ error?: string }> };
+
+export default async function DashboardPage({ searchParams }: Props) {
   const iracingId = await getIracingId();
   const cookieStore = await cookies();
   const accessToken = getAccessToken(cookieStore);
   const apiTest = accessToken
     ? await iracingDataGet("constants/divisions", { token: accessToken })
     : { ok: false as const, status: 401, error: "Not connected" };
+  const params = await searchParams;
+  const oauthNotConfigured = params.error === "oauth_not_configured";
 
   return (
     <div className="space-y-6">
@@ -47,13 +51,24 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="mt-1 space-y-2">
-            <p className="text-sm text-destructive">
-              {apiTest.error}
-              {apiTest.status ? ` (Status: ${apiTest.status})` : ""}
-            </p>
-            <Button asChild size="sm">
-              <Link href="/api/auth/iracing/authorize">Connect to iRacing</Link>
-            </Button>
+            {oauthNotConfigured ? (
+              <p className="text-sm text-muted-foreground">
+                iRacing OAuth isn’t set up yet. After iRacing approves your
+                client, add <code className="text-xs">IRACING_CLIENT_ID</code>{" "}
+                and <code className="text-xs">IRACING_CLIENT_SECRET</code> in
+                Vercel → Settings → Environment Variables, then redeploy.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-destructive">
+                  {apiTest.error}
+                  {apiTest.status ? ` (Status: ${apiTest.status})` : ""}
+                </p>
+                <Button asChild size="sm">
+                  <Link href="/api/auth/iracing/authorize">Connect to iRacing</Link>
+                </Button>
+              </>
+            )}
           </div>
         )}
       </section>

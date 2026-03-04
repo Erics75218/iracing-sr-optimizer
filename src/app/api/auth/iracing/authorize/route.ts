@@ -8,10 +8,10 @@ export async function GET(request: NextRequest) {
   const clientId = process.env.IRACING_CLIENT_ID;
   const clientSecret = process.env.IRACING_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    return NextResponse.json(
-      { error: "iRacing OAuth not configured. Set IRACING_CLIENT_ID and IRACING_CLIENT_SECRET." },
-      { status: 503 }
-    );
+    const url = new URL(request.url);
+    const dashboardUrl = new URL("/dashboard", url.origin);
+    dashboardUrl.searchParams.set("error", "oauth_not_configured");
+    return NextResponse.redirect(dashboardUrl);
   }
 
   const url = new URL(request.url);
