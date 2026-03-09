@@ -19,6 +19,9 @@ export default async function DashboardPage({ searchParams }: Props) {
     : { ok: false as const, status: 401, error: "Not connected" };
   const params = await searchParams;
   const oauthNotConfigured = params.error === "oauth_not_configured";
+  const oauthExchangeFailed = params.error === "oauth_token_exchange_failed";
+  const oauthCallbackInvalid = params.error === "oauth_callback_invalid";
+  const hasOauthError = Boolean(params.error);
 
   // Use mock recommendations until we have live API data; same UI will show real data later
   const hasLiveData = apiTest.ok;
@@ -29,6 +32,26 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
+      {hasOauthError && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+          <p className="text-sm font-medium text-destructive">
+            iRacing connection error
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {oauthExchangeFailed &&
+              "Token exchange failed. iRacing rejected the code exchange (e.g. wrong secret or redirect_uri)."}
+            {oauthCallbackInvalid &&
+              "Callback invalid or expired (e.g. missing cookie or state mismatch). Try Connect again from this dashboard."}
+            {oauthNotConfigured && "OAuth env vars are not set on the server."}
+            {params.error && !oauthExchangeFailed && !oauthCallbackInvalid && !oauthNotConfigured && (
+              <>Error code: <code className="text-xs">{params.error}</code></>
+            )}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            URL error param: <code>{params.error}</code>
+          </p>
+        </div>
+      )}
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       {iracingId ? (
         <p className="text-muted-foreground">
@@ -68,6 +91,24 @@ export default async function DashboardPage({ searchParams }: Props) {
                 and <code className="text-xs">IRACING_CLIENT_SECRET</code> in
                 Vercel → Settings → Environment Variables, then redeploy.
               </p>
+            ) : oauthExchangeFailed ? (
+              <>
+                <p className="text-sm text-destructive">
+                  Connection failed when exchanging the code. Try again below.
+                </p>
+                <Button asChild size="sm">
+                  <Link href="/api/auth/iracing/authorize">Connect to iRacing</Link>
+                </Button>
+              </>
+            ) : oauthCallbackInvalid ? (
+              <>
+                <p className="text-sm text-destructive">
+                  Connection failed (invalid or expired callback). Try again below.
+                </p>
+                <Button asChild size="sm">
+                  <Link href="/api/auth/iracing/authorize">Connect to iRacing</Link>
+                </Button>
+              </>
             ) : (
               <>
                 <p className="text-sm text-destructive">

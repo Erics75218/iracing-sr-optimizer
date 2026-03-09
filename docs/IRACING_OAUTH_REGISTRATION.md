@@ -7,6 +7,28 @@ Choose the **“Other Client Types”** (non–Password Limited) request type so
 
 ---
 
+## iRacing client (as of approval email)
+
+| Field | Value on file with iRacing |
+|-------|----------------------------|
+| **client_id** | `sr-optimizer` |
+| **Client Name** | SR Optimizer |
+| **Client Type** | server-side |
+| **Developer's Name** | Christopher Smith |
+| **Developer's URL** | https://iracing-sr-optimizer-529tbmcxt-erics75218s-projects.vercel.app/ |
+| **Developer Email** | erics75218@gmail.com |
+| **Audiences** | data-server |
+
+**Redirect URIs currently approved:**
+- `https://vercel.com/erics75218s-projects/api/auth/iracing/callback` — Vercel dashboard URL; **not** where the app runs, so production Connect will fail.
+- `http://127.0.0.1:3000/api/auth/iracing/callback` — **correct for local dev** (use `IRACING_REDIRECT_URI` in `.env` and open app at http://127.0.0.1:3000).
+
+**Still needed for production:** Ask iRacing to **add** this redirect URI so “Connect to iRacing” works on the live app:
+
+- `https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback`
+
+---
+
 ## Copy-paste values
 
 Replace any `YOUR_*` placeholders with your real info before submitting.
@@ -19,8 +41,8 @@ Replace any `YOUR_*` placeholders with your real info before submitting.
 | **Developer URL** | `https://iracing-sr-optimizer.vercel.app` *(or your real Vercel URL, e.g. `https://iracing-sr-optimizer-xxxx.vercel.app`)* |
 | **Developer Email** | `YOUR_EMAIL@example.com` |
 | **Redirect URIs** | *(add both of these as separate URIs)* |
-| ↳ URI 1 | `http://localhost:3000/api/auth/iracing/callback` |
-| ↳ URI 2 | `https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback` *(replace with your actual Vercel URL if different)* |
+| ↳ Local | `http://127.0.0.1:3000/api/auth/iracing/callback` |
+| ↳ Production | `https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback` |
 | **Audiences** | `data-server` |
 
 ---
@@ -35,7 +57,7 @@ Developer URL:      https://iracing-sr-optimizer.vercel.app
 Developer Email:    eric@example.com
 
 Redirect URIs:
-  http://localhost:3000/api/auth/iracing/callback
+  http://127.0.0.1:3000/api/auth/iracing/callback
   https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback
 
 Audiences:          data-server
@@ -50,4 +72,4 @@ Audiences:          data-server
 - Add those to:
   - **Vercel:** Settings → Environment Variables → `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`
   - **Local:** `.env` in the project root with the same names.
-- If your **production** URL is different (e.g. `https://iracing-sr-optimizer-abc123.vercel.app`), use that exact host in the second Redirect URI when you register.
+- For **local dev**, in `.env` set `IRACING_REDIRECT_URI=http://127.0.0.1:3000/api/auth/iracing/callback` and open the app at **http://127.0.0.1:3000** (not localhost).

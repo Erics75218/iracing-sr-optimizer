@@ -4,6 +4,12 @@ const OAUTH_AUTHORIZE = "https://oauth.iracing.com/oauth2/authorize";
 const OAUTH_TOKEN = "https://oauth.iracing.com/oauth2/token";
 const SCOPE = "iracing.auth";
 
+/** iRacing requires client_secret (and password) to be masked: SHA256(secret + normalized_id) then base64. */
+function maskSecret(secret: string, id: string): string {
+  const normalizedId = id.trim().toLowerCase();
+  return createHash("sha256").update(secret + normalizedId).digest("base64");
+}
+
 export const IRACING_OAUTH = {
   /** Cookie that stores PKCE code_verifier during the flow (short-lived). */
   VERIFIER_COOKIE: "iracing_oauth_verifier",
@@ -66,7 +72,7 @@ export async function exchangeCode(params: {
     code_verifier: params.codeVerifier,
   });
   if (params.clientSecret) {
-    body.set("client_secret", params.clientSecret);
+    body.set("client_secret", maskSecret(params.clientSecret, params.clientId));
   }
   const res = await fetch(OAUTH_TOKEN, {
     method: "POST",
@@ -92,7 +98,7 @@ export async function refreshAccessToken(params: {
     refresh_token: params.refreshToken,
   });
   if (params.clientSecret) {
-    body.set("client_secret", params.clientSecret);
+    body.set("client_secret", maskSecret(params.clientSecret, params.clientId));
   }
   const res = await fetch(OAUTH_TOKEN, {
     method: "POST",
