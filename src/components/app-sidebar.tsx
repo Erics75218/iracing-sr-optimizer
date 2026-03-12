@@ -150,7 +150,7 @@ export function AppSidebar({
                 {item.expandableKey === "formula" ? (
                   <FormulaNavLink
                     isOnPage={isOnPage}
-                    disciplineRatings={disciplineRatings}
+                    disciplineRatings={disciplineRatings ?? null}
                   />
                 ) : (
                   <Link href={item.href} className="flex-1 min-w-0">
