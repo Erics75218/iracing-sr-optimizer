@@ -12,6 +12,9 @@ export type Track = {
   config_name: string | null;
   /** Approx lap count for typical race; used for SR scoring when no corner data */
   lap_count?: number;
+  /** From iRacing API when available (schedule/track endpoints) */
+  length_miles?: number;
+  turn_count?: number;
 };
 
 export type Session = {
@@ -28,6 +31,8 @@ export type Series = {
   series_id: number;
   series_name: string;
   category_id: CategoryId;
+  /** Current race week for this series (from API race_week); used for "this week's track" */
+  current_race_week?: number;
   sessions?: Session[];
 };
 
@@ -44,8 +49,16 @@ export type RaceRecommendation = {
   trackName: string;
   trackConfig: string | null;
   raceWeek: number;
-  /** Higher = better for SR (e.g. longer race, fewer corners) */
+  /** Higher = better for SR (legacy sort); prefer srPotentialScore for display. */
   score: number;
   reason: string;
   categoryId: CategoryId;
+  /** Total corners in the race (laps × turn_count) — possible with 0 incidents. */
+  potentialCorners?: number;
+  /** Track corners per mile (turn_count / length_miles) for this layout. */
+  cornersPerMile?: number;
+  /** Average incidents per race from stats when available; null = no data. */
+  avgIncidentsPerRace?: number | null;
+  /** SR potential 1–5 from total corners only: 5 = high, 1 = low. */
+  srPotentialScore?: number;
 };

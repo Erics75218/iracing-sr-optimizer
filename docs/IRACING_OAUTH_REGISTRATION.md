@@ -73,3 +73,12 @@ Audiences:          data-server
   - **Vercel:** Settings → Environment Variables → `IRACING_CLIENT_ID`, `IRACING_CLIENT_SECRET`
   - **Local:** `.env` in the project root with the same names.
 - For **local dev**, in `.env` set `IRACING_REDIRECT_URI=http://127.0.0.1:3000/api/auth/iracing/callback` and open the app at **http://127.0.0.1:3000** (not localhost).
+- If you run the app on a **different port** (e.g. `http://127.0.0.1:3001`), the app uses that port in the callback URL. If Connect fails with **"unauthorized_client"**, add that exact URL in iRacing (OAuth client → Redirect URIs). The dashboard shows the callback URL this app is using so you can copy it.
+
+---
+
+## Official iRacing OAuth references
+
+- **Authorize endpoint:** [oauth.iracing.com/oauth2/book/authorize_endpoint.html](https://oauth.iracing.com/oauth2/book/authorize_endpoint.html) — `client_id`, `redirect_uri` (must match exactly), `response_type=code`, PKCE `code_challenge` / `code_challenge_method=S256`, `state`, `scope`.
+- **Token endpoint:** [oauth.iracing.com/oauth2/book/token_endpoint.html](https://oauth.iracing.com/oauth2/book/token_endpoint.html) — Authorization Code grant: `grant_type=authorization_code`, `client_id`, **masked** `client_secret`, `code`, same `redirect_uri`, `code_verifier`. Form body must be URL (percent) encoded. Client secret masking: SHA256(secret + normalized_id), then base64; for `client_secret` the id is `client_id`.
+- **Password Limited (different flow):** [github.com/NickBaileyMA/irplc](https://github.com/NickBaileyMA/irplc) — example Python client for the Password Limited grant only; we use Authorization Code + PKCE.

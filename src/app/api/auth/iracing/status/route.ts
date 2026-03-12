@@ -9,8 +9,10 @@ export async function GET(request: NextRequest) {
   const hasSecret = Boolean(process.env.IRACING_CLIENT_SECRET?.trim());
   const configured = hasId && hasSecret;
   const url = new URL(request.url);
-  const redirectUri =
-    process.env.IRACING_REDIRECT_URI ?? `${url.origin}/api/auth/iracing/callback`;
+  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const redirectUri = isLocal
+    ? (process.env.IRACING_REDIRECT_URI ?? "http://127.0.0.1:3000/api/auth/iracing/callback")
+    : (process.env.IRACING_REDIRECT_URI ?? `${url.origin}/api/auth/iracing/callback`);
   return NextResponse.json({
     configured,
     IRACING_CLIENT_ID: hasId ? "set" : "missing",

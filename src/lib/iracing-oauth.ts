@@ -1,10 +1,17 @@
-import { createHash, randomBytes } from "node:crypto";
+/**
+ * iRacing OAuth2 – Authorization Code flow with PKCE.
+ * Specs: https://oauth.iracing.com/oauth2/book/authorize_endpoint.html
+ *        https://oauth.iracing.com/oauth2/book/token_endpoint.html
+ * Client secret must be masked (SHA256(secret + normalized_id), base64) per token endpoint docs.
+ * We use Authorization Code flow, not Password Limited (see e.g. github.com/NickBaileyMA/irplc for that).
+ */
+import { createHash, createHmac, randomBytes } from "node:crypto";
 
 const OAUTH_AUTHORIZE = "https://oauth.iracing.com/oauth2/authorize";
 const OAUTH_TOKEN = "https://oauth.iracing.com/oauth2/token";
 const SCOPE = "iracing.auth";
 
-/** iRacing requires client_secret (and password) to be masked: SHA256(secret + normalized_id) then base64. */
+/** iRacing masking: id trimmed + lowercased, then SHA256(secret + id) and base64 (standard). */
 function maskSecret(secret: string, id: string): string {
   const normalizedId = id.trim().toLowerCase();
   return createHash("sha256").update(secret + normalizedId).digest("base64");
@@ -29,7 +36,44 @@ export function generatePkce(): { verifier: string; challenge: string } {
   return { verifier, challenge };
 }
 
-/** Build the iRacing authorize URL (user is sent here to log in). */
+const STATE_PAYLOAD_PREFIX = "v1.";
+
+/**
+ * Encode verifier into state so callback does not rely on cookies (fixes localhost vs 127.0.0.1 and Safari).
+ * State = "v1." + base64url(payload) + "." + base64url(HMAC-SHA256(payload, secret)).
+ */
+export function createStateWithVerifier(verifier: string, secret: string): string {
+  const payload = JSON.stringify({
+    rnd: randomBytes(16).toString("hex"),
+    verifier,
+  });
+  const payloadB64 = Buffer.from(payload, "utf8").toString("base64url");
+  const sig = createHmac("sha256", secret).update(payloadB64).digest("base64url");
+  return STATE_PAYLOAD_PREFIX + payloadB64 + "." + sig;
+}
+
+/**
+ * Decode state and return verifier if signature is valid. Returns null if invalid or legacy state.
+ */
+export function getVerifierFromState(state: string, secret: string): string | null {
+  if (!state || !secret) return null;
+  if (!state.startsWith(STATE_PAYLOAD_PREFIX)) return null;
+  const rest = state.slice(STATE_PAYLOAD_PREFIX.length);
+  const dot = rest.indexOf(".");
+  if (dot === -1) return null;
+  const payloadB64 = rest.slice(0, dot);
+  const sig = rest.slice(dot + 1);
+  const expectedSig = createHmac("sha256", secret).update(payloadB64).digest("base64url");
+  if (sig !== expectedSig) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+    return typeof payload.verifier === "string" ? payload.verifier : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Build authorize URL. redirect_uri must match exactly a URI registered with iRacing. */
 export function buildAuthorizeUrl(params: {
   clientId: string;
   redirectUri: string;
@@ -56,7 +100,7 @@ export type TokenResponse = {
   scope?: string;
 };
 
-/** Exchange authorization code for tokens. */
+/** Exchange authorization code for tokens. redirect_uri must be the same as used in /authorize. Form body is percent-encoded per iRacing. */
 export async function exchangeCode(params: {
   clientId: string;
   clientSecret: string;
@@ -77,7 +121,7 @@ export async function exchangeCode(params: {
   const res = await fetch(OAUTH_TOKEN, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    body: body.toString(), // URL-encoded per token endpoint docs
   });
   if (!res.ok) {
     const text = await res.text();

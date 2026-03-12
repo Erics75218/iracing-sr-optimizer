@@ -34,12 +34,18 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
  * Call an iRacing Data API path (e.g. "constants/divisions" or "car/get").
  * If the response has a "link" field, fetches that URL and returns the JSON.
  * Otherwise returns the response body (e.g. { data: ... }).
+ * Optional searchParams are appended (e.g. { cust_ids: "123" }).
  */
 export async function iracingDataGet<T = unknown>(
   path: string,
-  options?: { token?: string }
+  options?: { token?: string; searchParams?: Record<string, string> }
 ): Promise<{ ok: true; data: T } | IracingApiError> {
-  const url = `${BASE_URL}/${path.replace(/^\//, "")}`;
+  const pathPart = path.replace(/^\//, "");
+  const sp = options?.searchParams;
+  const query = sp && Object.keys(sp).length > 0
+    ? "?" + new URLSearchParams(sp).toString()
+    : "";
+  const url = `${BASE_URL}/${pathPart}${query}`;
   const headers: Record<string, string> = {};
   if (options?.token) {
     headers["Authorization"] = `Bearer ${options.token}`;

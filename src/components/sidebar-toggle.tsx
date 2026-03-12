@@ -8,11 +8,20 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { AppSidebar } from "@/components/app-sidebar";
+import type { DisciplineRatings } from "@/lib/member-ratings";
 
 export function SidebarToggle({
+  isConnected,
   iracingId,
+  iracingName,
+  disciplineRatings,
+  disciplineSeriesNames,
 }: {
+  isConnected?: boolean;
   iracingId?: string | null;
+  iracingName?: string | null;
+  disciplineRatings?: DisciplineRatings | null;
+  disciplineSeriesNames?: import("@/lib/discipline-series").DisciplineSeriesNames | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -24,7 +33,14 @@ export function SidebarToggle({
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-56">
-        <AppSidebar className="border-0 h-full" iracingId={iracingId} />
+        <AppSidebar
+          className="border-0 h-full"
+          isConnected={isConnected}
+          iracingId={iracingId}
+          iracingName={iracingName}
+          disciplineRatings={disciplineRatings}
+          disciplineSeriesNames={disciplineSeriesNames}
+        />
       </SheetContent>
     </Sheet>
   );

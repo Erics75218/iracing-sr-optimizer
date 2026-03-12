@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-const COOKIE_NAME = "iracing_id";
+import { IRACING_ID_COOKIE } from "@/lib/auth";
+const COOKIE_NAME = IRACING_ID_COOKIE;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

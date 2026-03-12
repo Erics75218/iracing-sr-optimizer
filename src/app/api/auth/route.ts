@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
-
-const COOKIE_NAME = "iracing_id";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+import { IRACING_ID_COOKIE, IRACING_ID_COOKIE_OPTIONS } from "@/lib/auth";
 
 /**
- * iRacing ID auth. Stores ID in a cookie for dashboard use; will later use it
- * to fetch data from the members-ng API (e.g. entitlements, schedule). No user
- * account or password handling in this app.
+ * iRacing ID auth. Stores ID in a cookie for dashboard use.
+ * Only sets the iRacing ID cookie; does not touch OAuth cookies (so Connect to iRacing stays valid).
  */
 export async function POST(request: Request) {
   let body: { iracingId?: string | number };
@@ -36,10 +33,6 @@ export async function POST(request: Request) {
   }
 
   const res = NextResponse.json({ ok: true, message: "Auth stub" });
-  res.cookies.set(COOKIE_NAME, idStr, {
-    path: "/",
-    maxAge: COOKIE_MAX_AGE,
-    sameSite: "lax",
-  });
+  res.cookies.set(IRACING_ID_COOKIE, idStr, IRACING_ID_COOKIE_OPTIONS);
   return res;
 }

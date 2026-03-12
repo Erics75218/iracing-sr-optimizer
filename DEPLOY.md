@@ -51,18 +51,41 @@ Do **not** commit these; they stay in Vercel only.
 
 When you [register your OAuth client](https://oauth.iracing.com/oauth2/book/client_registration.html) with iRacing, add **both** redirect URIs:
 
-- `http://localhost:3000/api/auth/iracing/callback` (local)
+- `http://127.0.0.1:3000/api/auth/iracing/callback` (local dev)
 - `https://YOUR_VERCEL_URL/api/auth/iracing/callback` (production)
 
-Example: if Vercel gives you `https://iracing-sr-optimizer.vercel.app`, use:
+Example: if Vercel gives you `https://iracing-sr-optimizer.vercel.app`, add:
 
 - `https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback`
 
 One approved client works for both local and production; no need to re-request.
 
-### 5. Redeploy after adding env vars
+### 5. Enable “Connect to iRacing” on production
+
+1. Ask iRacing to **add** your production callback URL to your client (if not already there).
+2. In Vercel → **Settings** → **Environment Variables**, add:
+   - Name: `IRACING_PRODUCTION_URI_APPROVED`
+   - Value: `true`
+   - Environment: Production (and Preview if you want)
+3. This turns on the “Connect to iRacing” button on the live site.
+
+### 6. Redeploy after adding env vars
 
 In Vercel, go to **Deployments** → open the **⋯** on the latest deployment → **Redeploy** so the new env vars are used.
+
+---
+
+## Testing like end users (production)
+
+To test the app the way real users will (no localhost/127.0.0.1):
+
+1. **Deploy** the app to Vercel (steps 1–3 above).
+2. **Add** the production callback URL with iRacing and set `IRACING_PRODUCTION_URI_APPROVED=true` (steps 4–6).
+3. Open your **production** URL in the browser (e.g. `https://iracing-sr-optimizer.vercel.app`).
+4. Enter your iRacing ID (or skip if you only care about Connect).
+5. Click **Connect to iRacing** → sign in with iRacing → you should return to the **same** production URL with “Connected” and your ID.
+
+Everything stays on the production domain; no localhost or 127.0.0.1. Use this flow for final QA before sharing the link.
 
 ---
 
