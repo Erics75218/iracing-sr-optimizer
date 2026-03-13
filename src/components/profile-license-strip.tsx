@@ -32,7 +32,7 @@ export function ProfileLicenseStrip({
             className={cn(
               "rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
               isSelected
-                ? "border-primary bg-primary/10 text-primary"
+                ? "border-primary bg-primary/15 ring-2 ring-primary/40 text-primary dark:bg-primary/20 dark:ring-primary/50"
                 : "border-border bg-card hover:bg-accent hover:text-accent-foreground"
             )}
           >
