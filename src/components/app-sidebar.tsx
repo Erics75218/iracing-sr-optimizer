@@ -129,15 +129,22 @@ export function AppSidebar({
             </a>
           )}
         </div>
-        {iracingName && (
-          <p className="mb-0.5 px-3 py-0.5 text-xs font-medium text-foreground truncate">
-            {iracingName}
-          </p>
-        )}
-        {iracingId && (
-          <p className="mb-2 px-3 py-0.5 text-xs text-muted-foreground">
-            ID: {iracingId}
-          </p>
+        {(iracingName || iracingId) && (
+          <Link
+            href="/dashboard/profile"
+            className="mb-2 block rounded-md px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+          >
+            {iracingName && (
+              <p className="text-xs font-medium text-foreground truncate">
+                {iracingName}
+              </p>
+            )}
+            {iracingId && (
+              <p className="text-xs text-muted-foreground">
+                ID: {iracingId}
+              </p>
+            )}
+          </Link>
         )}
         {LICENSE_CLASSES.map((item) => {
           const isExpanded = expandedDiscipline === item.expandableKey;
