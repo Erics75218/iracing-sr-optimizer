@@ -86,10 +86,12 @@ type ApiSeasonItem = {
   seriesName?: string;
   category_id?: number;
   categoryId?: number;
-  /** Current race week for this series (iRacing API) */
   race_week?: number;
   raceWeek?: number;
   schedules?: ApiScheduleItem[];
+  schedule?: ApiScheduleItem[];
+  raceSchedule?: ApiScheduleItem[];
+  race_schedule?: ApiScheduleItem[];
 };
 
 function normTrack(tr: ApiScheduleItem["track"]): Track {
@@ -139,12 +141,21 @@ function toSeasonItems(data: unknown): ApiSeasonItem[] {
   if (Array.isArray(data)) return data as ApiSeasonItem[];
   if (data && typeof data === "object") {
     const o = data as Record<string, unknown>;
-    for (const key of ["seasons", "data", "series"]) {
-      const arr = o[key];
-      if (Array.isArray(arr) && arr.length > 0) {
-        const first = arr[0] as Record<string, unknown>;
+    for (const key of ["seasons", "data", "series", "schedule", "season_list"]) {
+      const val = o[key];
+      if (Array.isArray(val) && val.length > 0) {
+        const first = val[0] as Record<string, unknown>;
         if (first && (first.series_id != null || first.seriesId != null || first.series_name != null || first.seriesName != null)) {
-          return arr as ApiSeasonItem[];
+          return val as ApiSeasonItem[];
+        }
+      }
+    }
+    // Some APIs return { data: { 2025: [...], 1: [...] } }; flatten first array-like value
+    for (const v of Object.values(o)) {
+      if (Array.isArray(v) && v.length > 0) {
+        const first = v[0] as Record<string, unknown>;
+        if (first && (first.series_id != null || first.seriesId != null)) {
+          return v as ApiSeasonItem[];
         }
       }
     }
@@ -191,8 +202,13 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
       item.category_id ?? item.categoryId ?? seriesCategoryById.get(seriesId)
     );
     const currentRaceWeek = item.race_week ?? item.raceWeek;
-    const rawSchedules = item.schedules ?? [];
-    const sessions: Session[] = rawSchedules.map(normSession);
+    const rawSchedules =
+      item.schedules ??
+      item.schedule ??
+      item.raceSchedule ??
+      item.race_schedule ??
+      [];
+    const sessions: Session[] = Array.isArray(rawSchedules) ? rawSchedules.map(normSession) : [];
 
     seriesMap.set(key, {
       series_id: seriesId,

@@ -53,7 +53,10 @@ export async function iracingDataGet<T = unknown>(
   try {
     const raw = await fetchJson<{ link?: string; data?: T }>(url, { headers });
     if (typeof (raw as { link?: string }).link === "string") {
-      const data = await fetchJson<T>((raw as { link: string }).link);
+      const linkUrl = (raw as { link: string }).link;
+      const linkHeaders: Record<string, string> = {};
+      if (options?.token) linkHeaders["Authorization"] = `Bearer ${options.token}`;
+      const data = await fetchJson<T>(linkUrl, { headers: linkHeaders });
       return { ok: true, data };
     }
     if (Object.prototype.hasOwnProperty.call(raw, "data")) {
