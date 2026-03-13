@@ -41,14 +41,17 @@ export async function GET(request: NextRequest) {
     state,
   });
 
+  const secure = url.protocol === "https:";
   const res = NextResponse.redirect(authUrl);
   res.cookies.set(IRACING_OAUTH.VERIFIER_COOKIE, verifier, {
     ...IRACING_OAUTH.COOKIE_OPTIONS,
     maxAge: 60 * 10, // 10 min, fallback if callback has cookies
+    secure,
   });
   res.cookies.set(IRACING_OAUTH.STATE_COOKIE, state, {
     ...IRACING_OAUTH.COOKIE_OPTIONS,
     maxAge: 60 * 10,
+    secure,
   });
   return res;
 }

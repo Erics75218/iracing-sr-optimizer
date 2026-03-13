@@ -24,10 +24,11 @@ export async function GET(request: NextRequest) {
   const oauthError = url.searchParams.get("error");
   const existingIracingId = request.cookies.get(IRACING_ID_COOKIE)?.value?.trim();
 
+  const secure = url.protocol === "https:";
   if (oauthError === "unauthorized_client") {
     dashboardUrl.searchParams.set("error", "oauth_unauthorized_client");
     const res = NextResponse.redirect(dashboardUrl);
-    clearOAuthCookies(res);
+    clearOAuthCookies(res, secure);
     return res;
   }
 
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
   if (!code || !verifier || !state) {
     dashboardUrl.searchParams.set("error", "oauth_callback_invalid");
     const res = NextResponse.redirect(dashboardUrl);
-    clearOAuthCookies(res);
+    clearOAuthCookies(res, secure);
     return res;
   }
 
@@ -62,14 +63,14 @@ export async function GET(request: NextRequest) {
       codeVerifier: verifier,
     });
     const expiresAt = String(Math.floor(Date.now() / 1000) + (data.expires_in ?? 600));
-    const opts = { ...IRACING_OAUTH.COOKIE_OPTIONS, maxAge: 60 * 60 * 24 * 30 };
+    const opts = { ...IRACING_OAUTH.COOKIE_OPTIONS, maxAge: 60 * 60 * 24 * 30, secure };
     // Return 200 + HTML redirect so Safari (and others) persist Set-Cookie before navigating.
     // Safari often does not store cookies when they are sent with a 307 redirect response.
     const res = new NextResponse(redirectHtml(dashboardUrl.toString()), {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
-    clearOAuthCookies(res); // clear verifier/state
+    clearOAuthCookies(res, secure); // clear verifier/state
     res.cookies.set(IRACING_OAUTH.ACCESS_TOKEN_COOKIE, data.access_token, opts);
     res.cookies.set(IRACING_OAUTH.EXPIRES_AT_COOKIE, expiresAt, opts);
     if (data.refresh_token) {
@@ -86,14 +87,14 @@ export async function GET(request: NextRequest) {
       idToSet = String(memberResult.data.cust_id);
     }
     if (idToSet) {
-      res.cookies.set(IRACING_ID_COOKIE, idToSet, IRACING_ID_COOKIE_OPTIONS);
+      res.cookies.set(IRACING_ID_COOKIE, idToSet, { ...IRACING_ID_COOKIE_OPTIONS, secure });
     }
 
     return res;
   } catch (err) {
     dashboardUrl.searchParams.set("error", "oauth_token_exchange_failed");
     const res = NextResponse.redirect(dashboardUrl);
-    clearOAuthCookies(res);
+    clearOAuthCookies(res, secure);
     return res;
   }
 }
@@ -105,7 +106,7 @@ function redirectHtml(dashboardUrl: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="${delayMs / 1000};url=${safe}"><script>setTimeout(function(){ window.location.replace(${JSON.stringify(dashboardUrl)}); }, ${delayMs});</script></head><body><p>Redirecting to <a href="${safe}">dashboard</a>…</p></body></html>`;
 }
 
-function clearOAuthCookies(res: NextResponse) {
-  res.cookies.set(IRACING_OAUTH.VERIFIER_COOKIE, "", { path: "/", maxAge: 0 });
-  res.cookies.set(IRACING_OAUTH.STATE_COOKIE, "", { path: "/", maxAge: 0 });
+function clearOAuthCookies(res: NextResponse, secure = false) {
+  res.cookies.set(IRACING_OAUTH.VERIFIER_COOKIE, "", { path: "/", maxAge: 0, secure });
+  res.cookies.set(IRACING_OAUTH.STATE_COOKIE, "", { path: "/", maxAge: 0, secure });
 }

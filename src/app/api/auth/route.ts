@@ -33,6 +33,7 @@ export async function POST(request: Request) {
   }
 
   const res = NextResponse.json({ ok: true, message: "Auth stub" });
-  res.cookies.set(IRACING_ID_COOKIE, idStr, IRACING_ID_COOKIE_OPTIONS);
+  const secure = new URL(request.url).protocol === "https:";
+  res.cookies.set(IRACING_ID_COOKIE, idStr, { ...IRACING_ID_COOKIE_OPTIONS, secure });
   return res;
 }

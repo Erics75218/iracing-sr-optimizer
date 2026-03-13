@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:vercel-auth": "node scripts/test-vercel-auth.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",

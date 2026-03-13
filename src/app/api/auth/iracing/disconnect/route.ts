@@ -5,8 +5,9 @@ import { IRACING_OAUTH } from "@/lib/iracing-oauth";
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const res = NextResponse.redirect(new URL("/dashboard", url.origin));
-  res.cookies.set(IRACING_OAUTH.ACCESS_TOKEN_COOKIE, "", { path: "/", maxAge: 0 });
-  res.cookies.set(IRACING_OAUTH.REFRESH_TOKEN_COOKIE, "", { path: "/", maxAge: 0 });
-  res.cookies.set(IRACING_OAUTH.EXPIRES_AT_COOKIE, "", { path: "/", maxAge: 0 });
+  const secure = url.protocol === "https:";
+  res.cookies.set(IRACING_OAUTH.ACCESS_TOKEN_COOKIE, "", { path: "/", maxAge: 0, secure });
+  res.cookies.set(IRACING_OAUTH.REFRESH_TOKEN_COOKIE, "", { path: "/", maxAge: 0, secure });
+  res.cookies.set(IRACING_OAUTH.EXPIRES_AT_COOKIE, "", { path: "/", maxAge: 0, secure });
   return res;
 }
