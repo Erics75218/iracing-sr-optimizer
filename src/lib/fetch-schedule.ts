@@ -38,7 +38,7 @@ async function fetchSeriesMaps(token: string): Promise<{
 const CATEGORY_IDS: CategoryId[] = [1, 2, 3, 4];
 
 /** iRacing Season 1 = Dec–Mar, 2 = Mar–Jun, 3 = Jun–Sep, 4 = Sep–Dec. Returns { year, quarter } for "now". */
-function getCurrentSeasonYearQuarter(): { season_year: number; season_quarter: number } {
+export function getCurrentSeasonYearQuarter(): { season_year: number; season_quarter: number } {
   const now = new Date();
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth() + 1; // 1–12
@@ -161,6 +161,11 @@ function toSeasonItems(data: unknown): ApiSeasonItem[] {
     }
   }
   return [];
+}
+
+/** For debug: how many season items we can parse from API response (same logic as toSeasonItems). */
+export function getSeasonItemsCount(data: unknown): number {
+  return toSeasonItems(data).length;
 }
 
 /** Inner implementation: one API fetch. Used by cached wrapper. */
