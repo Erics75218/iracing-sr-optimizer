@@ -108,7 +108,7 @@ export function AppSidebar({
           )}
         >
           {isConnected ? (
-            <Link href="/api/auth/iracing/disconnect" className="block">
+            <a href="/api/auth/iracing/disconnect" className="block">
               <Button
                 variant="secondary"
                 size="sm"
@@ -116,9 +116,9 @@ export function AppSidebar({
               >
                 Connected · Disconnect
               </Button>
-            </Link>
+            </a>
           ) : (
-            <Link href="/api/auth/iracing/authorize" className="block">
+            <a href="/api/auth/iracing/authorize" className="block">
               <Button
                 variant="secondary"
                 size="sm"
@@ -126,7 +126,7 @@ export function AppSidebar({
               >
                 Connect to iRacing
               </Button>
-            </Link>
+            </a>
           )}
         </div>
         {iracingName && (
@@ -220,11 +220,11 @@ export function AppSidebar({
           );
         })}
         {iracingId && (
-          <Link href="/api/auth/logout" className="mt-4">
+          <a href="/api/auth/logout" className="mt-4 block">
             <Button variant="outline" size="sm" className="w-full">
               Sign out
             </Button>
-          </Link>
+          </a>
         )}
       </nav>
     </aside>
