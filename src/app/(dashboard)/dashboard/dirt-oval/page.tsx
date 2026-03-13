@@ -107,6 +107,11 @@ export default async function DirtOvalPage({ searchParams }: Props) {
           <h2 className="text-sm font-medium text-amber-900 dark:text-amber-100">
             Golden path — best race per week for SR (0 incidents)
           </h2>
+          {isMock && (
+            <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+              Using fallback schedule — only sample series are shown. Connect to iRacing for the full list.
+            </p>
+          )}
           <p className="mt-1 text-xs text-muted-foreground">
             One race per week that gives the highest potential corners in Dirt Oval. Run these for maximum SR gain with 0×. Uncheck series you want to omit (e.g. very long races). Click a series below to see its schedule and track data instead.
           </p>
@@ -174,6 +179,11 @@ export default async function DirtOvalPage({ searchParams }: Props) {
 
       <section className="rounded-lg border p-4 bg-card">
         <h2 className="text-sm font-medium">SR-friendly recommendations</h2>
+        {isMock && (
+          <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+            Using fallback data — connect to iRacing for live schedule.
+          </p>
+        )}
         <p className="mt-1 text-xs text-muted-foreground">
           {seriesFilter
             ? `${selectedSeries?.series_name ?? seriesFilter} — this season.`

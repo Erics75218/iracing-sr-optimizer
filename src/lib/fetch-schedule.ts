@@ -1,9 +1,11 @@
 /**
  * Fetch current season schedule from iRacing Data API and map to our Season type.
  * Uses series/seasons; series names are resolved via series/get when missing (API often omits series_name in seasons payload).
- * Cached per-request so layout and section pages share the same schedule (avoids Golden Path seeing mock data when layout has live data).
+ * Cached per-request (React cache) and across requests (Next unstable_cache, 2 min) so layout and section pages see the same schedule.
  */
 
+import { createHash } from "node:crypto";
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { iracingDataGet } from "@/lib/iracing-api";
 import type { CategoryId, Season, Series, Session, Track } from "@/lib/iracing-types";
@@ -150,14 +152,8 @@ function toSeasonItems(data: unknown): ApiSeasonItem[] {
   return [];
 }
 
-/**
- * Fetch current season schedule using the given access token.
- * Tries current season_year and season_quarter first; if that returns no items,
- * retries without params (API "current" behavior) so we still get data.
- * Returns a Season suitable for getRecommendations, or null on error.
- * Deduplicated per request so layout and pages see the same schedule.
- */
-export const fetchCurrentSeasonSchedule = cache(async function fetchCurrentSeasonSchedule(token: string): Promise<Season | null> {
+/** Inner implementation: one API fetch. Used by cached wrapper. */
+async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | null> {
   const { season_year, season_quarter } = getCurrentSeasonYearQuarter();
   let result = await iracingDataGet<unknown>("series/seasons", {
     token,
@@ -176,7 +172,6 @@ export const fetchCurrentSeasonSchedule = cache(async function fetchCurrentSeaso
   }
   if (items.length === 0) return null;
 
-  // series/seasons often omits series_name and category_id; resolve both from series/get
   const { namesById: seriesNamesById, categoryById: seriesCategoryById } = await fetchSeriesMaps(token);
 
   const first = items[0];
@@ -214,4 +209,17 @@ export const fetchCurrentSeasonSchedule = cache(async function fetchCurrentSeaso
     season_quarter: seasonQuarter,
     series: Array.from(seriesMap.values()),
   };
+}
+
+/**
+ * Fetch current season schedule. Cached per-request and across requests (2 min, keyed by token hash).
+ * Returns a Season suitable for getRecommendations, or null on error.
+ */
+export const fetchCurrentSeasonSchedule = cache(async function fetchCurrentSeasonSchedule(token: string): Promise<Season | null> {
+  const key = createHash("sha256").update(token).digest("hex").slice(0, 16);
+  return unstable_cache(
+    () => fetchCurrentSeasonScheduleInner(token),
+    ["current-season-schedule", key],
+    { revalidate: 120 }
+  )();
 });

@@ -4,6 +4,18 @@ Do this from the **project root**: `iracing-sr-optimizer` (where `package.json` 
 
 ---
 
+## Keep local in sync with deployed (Vercel)
+
+The app deployed on Vercel is built from the **same repo** (GitHub `main`). There is no separate “deployed branch” — Vercel builds whatever is on `main`. To make your local copy match what’s live:
+
+```bash
+git pull origin main
+```
+
+Run that from the project root whenever you want to match production. Then run `npm install` if dependencies changed, and `npm run dev` to test. Any changes you push to `main` (e.g. `git push origin main`) are what Vercel will deploy next.
+
+---
+
 ## 1. Open terminal in the project folder
 
 ```bash

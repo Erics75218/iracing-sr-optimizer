@@ -177,6 +177,11 @@ export default async function DashboardPage({ searchParams }: Props) {
         className={`rounded-lg border p-4 ${hasLiveData && !isMockRecommendations ? "bg-green-50 dark:bg-green-950/30" : "bg-card"}`}
       >
         <h2 className="text-sm font-medium">SR-friendly recommendations</h2>
+        {isMockRecommendations && (
+          <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+            Using fallback data — connect to iRacing for live schedule.
+          </p>
+        )}
         <p className="mt-1 text-xs text-muted-foreground">
           Races ranked by length and lap count to help maximize Safety Rating.
           {hasLiveData && !isMockRecommendations && recommendations.length > 0 && (
