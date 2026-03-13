@@ -20,7 +20,7 @@ export function ProfileBestLapsTable({
   if (rows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No best-lap-by-car data for {licenseLabel} yet. This may require additional iRacing API endpoints (e.g. member results + lap data) to be wired up.
+        No best-lap-by-car data for {licenseLabel} yet. Data comes from stats/member_bests or, if empty, from your recent race results and lap data.
       </p>
     );
   }
