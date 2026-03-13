@@ -22,28 +22,38 @@ export type DisciplineRatings = {
   dirtRoad: CategoryRatings;
 };
 
-/** License object from member/info (each category uses this shape). */
+/** License object from member/info (each category uses this shape). API may return snake_case or camelCase. */
 type LicenseInfo = {
   irating?: number;
   safety_rating?: number;
   group_name?: string;
+  groupName?: string;
   license_level?: number;
+  licenseLevel?: number;
   [key: string]: unknown;
 };
 
 type MemberInfoLicenses = {
   formula_car?: LicenseInfo;
+  formulaCar?: LicenseInfo;
   sports_car?: LicenseInfo;
+  sportsCar?: LicenseInfo;
   oval?: LicenseInfo;
   dirt_oval?: LicenseInfo;
+  dirtOval?: LicenseInfo;
   dirt_road?: LicenseInfo;
+  dirtRoad?: LicenseInfo;
+  [key: string]: unknown;
 };
 
 type MemberInfoResponse = {
   licenses?: MemberInfoLicenses;
   display_name?: string;
+  displayName?: string;
   first_name?: string;
+  firstName?: string;
   last_name?: string;
+  lastName?: string;
   [key: string]: unknown;
 };
 
@@ -62,17 +72,20 @@ function toRatings(lic?: LicenseInfo): CategoryRatings {
   }
   const irating =
     typeof lic.irating === "number" ? lic.irating : null;
+  const safetyVal = lic.safety_rating ?? (lic as Record<string, unknown>).safetyRating;
   const safety_rating =
-    typeof lic.safety_rating === "number"
-      ? lic.safety_rating
-      : typeof lic.safety_rating === "string"
-        ? parseFloat(lic.safety_rating)
+    typeof safetyVal === "number"
+      ? safetyVal
+      : typeof safetyVal === "string"
+        ? parseFloat(safetyVal)
         : null;
+  const groupName = lic.group_name ?? (lic as Record<string, unknown>).groupName;
+  const licenseLevel = lic.license_level ?? (lic as Record<string, unknown>).licenseLevel;
   const license_class =
-    typeof lic.group_name === "string" && lic.group_name.trim()
-      ? lic.group_name.trim()
-      : typeof lic.license_level === "number" && LICENSE_LEVEL_NAMES[lic.license_level] != null
-        ? LICENSE_LEVEL_NAMES[lic.license_level]
+    typeof groupName === "string" && groupName.trim()
+      ? groupName.trim()
+      : typeof licenseLevel === "number" && LICENSE_LEVEL_NAMES[licenseLevel] != null
+        ? LICENSE_LEVEL_NAMES[licenseLevel]
         : null;
   return {
     irating: irating != null && !Number.isNaN(irating) ? irating : null,
@@ -106,16 +119,17 @@ export async function getMemberDisciplineRatings(
     };
   }
 
+  const lic = (key: keyof MemberInfoLicenses) => licenses[key] ?? (licenses as Record<string, LicenseInfo>)[key];
   return {
-    formula: toRatings(licenses.formula_car),
-    sportsCar: toRatings(licenses.sports_car),
+    formula: toRatings(lic("formula_car") ?? lic("formulaCar")),
+    sportsCar: toRatings(lic("sports_car") ?? lic("sportsCar")),
     oval: toRatings(licenses.oval),
-    dirtOval: toRatings(licenses.dirt_oval),
-    dirtRoad: toRatings(licenses.dirt_road),
+    dirtOval: toRatings(lic("dirt_oval") ?? lic("dirtOval")),
+    dirtRoad: toRatings(lic("dirt_road") ?? lic("dirtRoad")),
   };
 }
 
-/** Best-effort display name for the authenticated member from member/info (for sidebar). */
+/** Best-effort display name for the authenticated member from member/info (for sidebar). Handles snake_case and camelCase. */
 export async function getMemberDisplayName(
   _custId: string,
   token: string | null
@@ -123,18 +137,29 @@ export async function getMemberDisplayName(
   if (!token) return null;
   const result = await iracingDataGet<MemberInfoResponse>("member/info", { token });
   if (!result.ok || !result.data) return null;
-  const data = result.data;
-  if (typeof data.display_name === "string" && data.display_name.trim()) {
-    return data.display_name.trim();
-  }
+  const data = result.data as Record<string, unknown>;
+  const displayName =
+    (typeof data.display_name === "string" && data.display_name.trim()
+      ? data.display_name.trim()
+      : null) ??
+    (typeof data.displayName === "string" && data.displayName.trim()
+      ? (data.displayName as string).trim()
+      : null);
+  if (displayName) return displayName;
   const first =
-    typeof data.first_name === "string" && data.first_name.trim()
+    (typeof data.first_name === "string" && data.first_name.trim()
       ? data.first_name.trim()
-      : "";
+      : "") ||
+    (typeof data.firstName === "string" && (data.firstName as string).trim()
+      ? (data.firstName as string).trim()
+      : "");
   const last =
-    typeof data.last_name === "string" && data.last_name.trim()
+    (typeof data.last_name === "string" && data.last_name.trim()
       ? data.last_name.trim()
-      : "";
+      : "") ||
+    (typeof data.lastName === "string" && (data.lastName as string).trim()
+      ? (data.lastName as string).trim()
+      : "");
   const joined = `${first} ${last}`.trim();
   return joined || null;
 }
