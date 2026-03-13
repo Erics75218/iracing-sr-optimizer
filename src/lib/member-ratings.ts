@@ -119,13 +119,14 @@ export async function getMemberDisciplineRatings(
     };
   }
 
-  const lic = (key: keyof MemberInfoLicenses) => licenses[key] ?? (licenses as Record<string, LicenseInfo>)[key];
+  const getLic = (snake: keyof MemberInfoLicenses, camel: keyof MemberInfoLicenses): LicenseInfo | undefined =>
+    (licenses[snake] as LicenseInfo | undefined) ?? (licenses[camel] as LicenseInfo | undefined);
   return {
-    formula: toRatings(lic("formula_car") ?? lic("formulaCar")),
-    sportsCar: toRatings(lic("sports_car") ?? lic("sportsCar")),
+    formula: toRatings(getLic("formula_car", "formulaCar")),
+    sportsCar: toRatings(getLic("sports_car", "sportsCar")),
     oval: toRatings(licenses.oval),
-    dirtOval: toRatings(lic("dirt_oval") ?? lic("dirtOval")),
-    dirtRoad: toRatings(lic("dirt_road") ?? lic("dirtRoad")),
+    dirtOval: toRatings(getLic("dirt_oval", "dirtOval")),
+    dirtRoad: toRatings(getLic("dirt_road", "dirtRoad")),
   };
 }
 
