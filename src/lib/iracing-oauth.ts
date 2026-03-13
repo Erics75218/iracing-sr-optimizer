@@ -39,15 +39,23 @@ export function generatePkce(): { verifier: string; challenge: string } {
 const STATE_PAYLOAD_PREFIX = "v1.";
 
 /**
- * Encode verifier into state so callback does not rely on cookies (fixes localhost vs 127.0.0.1 and Safari).
+ * Encode verifier (and optional iRacing ID) into state so callback does not rely on cookies.
  * State = "v1." + base64url(payload) + "." + base64url(HMAC-SHA256(payload, secret)).
+ * Preserving iracingId in state avoids losing it when the callback request doesn't send cookies (e.g. redirect from iRacing).
  */
-export function createStateWithVerifier(verifier: string, secret: string): string {
-  const payload = JSON.stringify({
+export function createStateWithVerifier(
+  verifier: string,
+  secret: string,
+  iracingId?: string | null
+): string {
+  const payload: { rnd: string; verifier: string; iracingId?: string } = {
     rnd: randomBytes(16).toString("hex"),
     verifier,
-  });
-  const payloadB64 = Buffer.from(payload, "utf8").toString("base64url");
+  };
+  if (iracingId != null && String(iracingId).trim() !== "") {
+    payload.iracingId = String(iracingId).trim();
+  }
+  const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   const sig = createHmac("sha256", secret).update(payloadB64).digest("base64url");
   return STATE_PAYLOAD_PREFIX + payloadB64 + "." + sig;
 }
@@ -56,8 +64,25 @@ export function createStateWithVerifier(verifier: string, secret: string): strin
  * Decode state and return verifier if signature is valid. Returns null if invalid or legacy state.
  */
 export function getVerifierFromState(state: string, secret: string): string | null {
-  if (!state || !secret) return null;
-  if (!state.startsWith(STATE_PAYLOAD_PREFIX)) return null;
+  const payload = getStatePayload(state, secret);
+  return payload && typeof payload.verifier === "string" ? payload.verifier : null;
+}
+
+/**
+ * Decode state and return the saved iRacing ID (if any). Use in callback to restore ID when cookies weren't sent.
+ */
+export function getIracingIdFromState(state: string, secret: string): string | null {
+  const payload = getStatePayload(state, secret);
+  if (!payload || typeof payload.iracingId !== "string") return null;
+  const id = String(payload.iracingId).trim();
+  return id === "" ? null : id;
+}
+
+function getStatePayload(
+  state: string,
+  secret: string
+): { verifier?: string; iracingId?: string } | null {
+  if (!state || !secret || !state.startsWith(STATE_PAYLOAD_PREFIX)) return null;
   const rest = state.slice(STATE_PAYLOAD_PREFIX.length);
   const dot = rest.indexOf(".");
   if (dot === -1) return null;
@@ -66,8 +91,10 @@ export function getVerifierFromState(state: string, secret: string): string | nu
   const expectedSig = createHmac("sha256", secret).update(payloadB64).digest("base64url");
   if (sig !== expectedSig) return null;
   try {
-    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
-    return typeof payload.verifier === "string" ? payload.verifier : null;
+    return JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as {
+      verifier?: string;
+      iracingId?: string;
+    };
   } catch {
     return null;
   }

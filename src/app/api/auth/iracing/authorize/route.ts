@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { IRACING_ID_COOKIE } from "@/lib/auth";
 import { generatePkce, buildAuthorizeUrl, createStateWithVerifier, IRACING_OAUTH } from "@/lib/iracing-oauth";
 
 /**
@@ -30,7 +31,8 @@ export async function GET(request: NextRequest) {
     ? (process.env.IRACING_REDIRECT_URI ?? "http://127.0.0.1:3000/api/auth/iracing/callback")
     : (process.env.IRACING_REDIRECT_URI ?? `${url.origin}/api/auth/iracing/callback`);
   const { verifier, challenge } = generatePkce();
-  const state = createStateWithVerifier(verifier, clientSecret);
+  const existingIracingId = request.cookies.get(IRACING_ID_COOKIE)?.value?.trim() ?? null;
+  const state = createStateWithVerifier(verifier, clientSecret, existingIracingId);
 
   const authUrl = buildAuthorizeUrl({
     clientId,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { IRACING_ID_COOKIE, IRACING_ID_COOKIE_OPTIONS } from "@/lib/auth";
 import { iracingDataGet } from "@/lib/iracing-api";
-import { exchangeCode, getVerifierFromState, IRACING_OAUTH } from "@/lib/iracing-oauth";
+import { exchangeCode, getVerifierFromState, getIracingIdFromState, IRACING_OAUTH } from "@/lib/iracing-oauth";
 
 /**
  * iRacing OAuth callback: exchange code for tokens, set cookies, redirect to dashboard.
@@ -76,8 +76,9 @@ export async function GET(request: NextRequest) {
       res.cookies.set(IRACING_OAUTH.REFRESH_TOKEN_COOKIE, data.refresh_token, opts);
     }
 
-    // Keep iRacing ID: prefer cust_id from API, otherwise keep existing cookie so we don't lose it after Connect
-    let idToSet = existingIracingId ?? "";
+    // Keep iRacing ID: prefer cust_id from API, then ID we stored in state (so Connect doesn't drop it when callback has no cookies), then existing cookie
+    const idFromState = state && clientSecret ? getIracingIdFromState(state, clientSecret) : null;
+    let idToSet = existingIracingId ?? idFromState ?? "";
     const memberResult = await iracingDataGet<{ cust_id?: number }>("member/info", {
       token: data.access_token,
     });
