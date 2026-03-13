@@ -14,7 +14,7 @@ import { getDisciplineSortIndex } from "@/lib/discipline-order";
 import { RecommendationsList } from "@/components/recommendations-list";
 import { Button } from "@/components/ui/button";
 
-type Props = { searchParams: Promise<{ error?: string }> };
+type Props = { searchParams: Promise<{ error?: string; missing?: string }> };
 
 function buildOAuthCallbackUrl(hostHeader: string | null, protoHeader: string | null): string {
   const host = hostHeader ?? "localhost:3000";
@@ -36,6 +36,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     ? await iracingDataGet("constants/divisions", { token: accessToken })
     : { ok: false as const, status: 401, error: "Not connected" };
   const params = await searchParams;
+  const oauthCallbackMissing = params.missing; // code | state | verifier when error=oauth_callback_invalid
   const oauthNotConfigured = params.error === "oauth_not_configured";
   const oauthExchangeFailed = params.error === "oauth_token_exchange_failed";
   const oauthCallbackInvalid = params.error === "oauth_callback_invalid";
@@ -99,7 +100,13 @@ export default async function DashboardPage({ searchParams }: Props) {
             {oauthExchangeFailed &&
               "Token exchange failed. iRacing rejected the code exchange (e.g. wrong secret or redirect_uri)."}
             {oauthCallbackInvalid &&
-              "The return from iRacing sign-in could not be verified. Use the same URL you use in the address bar (including the port, e.g. 3001) for the whole flow, then click Connect to iRacing again."}
+              (oauthCallbackMissing === "verifier"
+                ? "The OAuth state could not be verified (verifier missing). Set IRACING_REDIRECT_URI in Vercel to https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback and ensure IRACING_CLIENT_SECRET matches your iRacing OAuth client. Use the same browser and URL for the whole flow."
+                : oauthCallbackMissing === "state"
+                  ? "iRacing did not return the state parameter. Ensure the callback URL in iRacing is exactly: https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback"
+                  : oauthCallbackMissing === "code"
+                    ? "iRacing did not return an authorization code. Ensure the callback URL in iRacing is exactly: https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback"
+                    : "The return from iRacing sign-in could not be verified. Use the same URL you use in the address bar (including the port, e.g. 3001) for the whole flow, then click Connect to iRacing again.")}
             {productionRedirectNotApproved &&
               "Connect on this site is disabled until iRacing approves the production callback URL. Ask iRacing to add: https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback — then set IRACING_PRODUCTION_URI_APPROVED=true in Vercel and redeploy."}
             {oauthNotConfigured && "OAuth env vars are not set on the server."}
@@ -115,6 +122,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           {hasOauthError && (
             <p className="mt-2 text-xs text-muted-foreground">
               URL error param: <code>{params.error}</code>
+              {params.missing ? <> · Missing: <code>{params.missing}</code></> : null}
             </p>
           )}
         </div>

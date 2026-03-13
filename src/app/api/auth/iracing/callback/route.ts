@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
 
   if (!code || !verifier || !state) {
     dashboardUrl.searchParams.set("error", "oauth_callback_invalid");
+    if (!code) dashboardUrl.searchParams.set("missing", "code");
+    else if (!state) dashboardUrl.searchParams.set("missing", "state");
+    else dashboardUrl.searchParams.set("missing", "verifier");
     const res = NextResponse.redirect(dashboardUrl);
     clearOAuthCookies(res, secure);
     return res;
