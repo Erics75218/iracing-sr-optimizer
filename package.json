@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:vercel-auth": "node scripts/test-vercel-auth.mjs"
+    "test:vercel-auth": "node scripts/test-vercel-auth.mjs",
+    "test:auth-flow": "node scripts/test-auth-flow.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",

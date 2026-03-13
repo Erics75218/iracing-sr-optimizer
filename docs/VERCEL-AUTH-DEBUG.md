@@ -50,3 +50,36 @@ This hits `/api/debug/auth` and `/api/auth/iracing/status` and prints the JSON. 
 5. Open `/api/debug/auth` again. Check `cookies.connected === true`.
 
 If step 3 or 5 fails, use `hints` and the table above to fix config, then redeploy.
+
+## 5. Run tests before deploy
+
+You can run an integration test locally or against a deployment to verify login and state behavior:
+
+```bash
+# Start the app (if testing locally)
+npm run dev
+
+# In another terminal: test that login sets cookie and next request sees it
+npm run test:auth-flow
+
+# Against Vercel (no dev server needed): same test
+BASE_URL=https://iracing-sr-optimizer.vercel.app npm run test:auth-flow
+```
+
+- **Locally:** The script also hits `/api/debug/state-roundtrip` (dev-only) to verify OAuth state round-trips the iRacing ID.
+- **Vercel:** If `test:auth-flow` fails on the production URL, cookies may not be persisting (e.g. domain, secure, or SameSite).
+
+## 6. After Connect: why is my ID gone?
+
+If Connect to iRacing works but the app no longer shows your iRacing ID:
+
+1. **Check the callback response**  
+   In DevTools → Network, after returning from iRacing, select the request to `/api/auth/iracing/callback`. In the **response headers** look for `X-Debug-ID-Source`:
+   - `api` – ID came from iRacing member/info (expected when you’re logged into iRacing).
+   - `state` – ID was restored from the OAuth state (used when the callback request had no cookies).
+   - `cookie` – ID came from the cookie sent to the callback.
+   - `none` – No ID was set (so you’ll see “Enter iRacing ID” again).
+
+2. If you see **`none`**, the ID was never in state. That usually means when you clicked “Connect to iRacing”, the request to `/api/auth/iracing/authorize` did **not** send the `iracing_id` cookie. So either the login cookie wasn’t stored (try the same URL for login and Connect, and use HTTPS on Vercel), or you’re on a different host (e.g. www vs non-www).
+
+3. Run **`npm run test:auth-flow`** against your Vercel URL. If it passes, the server is setting and reading the login cookie correctly; the issue is then likely browser/host (same URL for login and Connect).

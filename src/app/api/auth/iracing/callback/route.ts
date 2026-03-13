@@ -92,6 +92,9 @@ export async function GET(request: NextRequest) {
     if (idToSet) {
       res.cookies.set(IRACING_ID_COOKIE, idToSet, { ...IRACING_ID_COOKIE_OPTIONS, secure });
     }
+    // Debug: where did the ID come from? (state = from OAuth state, cookie = from request, api = from member/info)
+    const idSource = memberResult.ok && memberResult.data?.cust_id != null ? "api" : idFromState ? "state" : existingIracingId ? "cookie" : "none";
+    res.headers.set("X-Debug-ID-Source", idSource);
 
     return res;
   } catch (err) {
