@@ -54,9 +54,9 @@ export async function iracingDataGet<T = unknown>(
     const raw = await fetchJson<{ link?: string; data?: T }>(url, { headers });
     if (typeof (raw as { link?: string }).link === "string") {
       const linkUrl = (raw as { link: string }).link;
-      const linkHeaders: Record<string, string> = {};
-      if (options?.token) linkHeaders["Authorization"] = `Bearer ${options.token}`;
-      const data = await fetchJson<T>(linkUrl, { headers: linkHeaders });
+      // Do NOT send Authorization when fetching the link: it is a pre-signed URL (e.g. S3)
+      // with auth in the query string; sending Bearer causes "Only one auth mechanism allowed".
+      const data = await fetchJson<T>(linkUrl, { headers: {} });
       return { ok: true, data };
     }
     if (Object.prototype.hasOwnProperty.call(raw, "data")) {
