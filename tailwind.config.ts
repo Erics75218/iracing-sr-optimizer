@@ -43,6 +43,10 @@ const config: Config = {
           DEFAULT: "var(--secondary)",
           foreground: "var(--secondary-foreground)",
         },
+        vaporwave: {
+          DEFAULT: "var(--vaporwave)",
+          muted: "var(--vaporwave-muted)",
+        },
       },
     },
   },

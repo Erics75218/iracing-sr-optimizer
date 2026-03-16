@@ -102,12 +102,12 @@ export default async function OvalPage({ searchParams }: Props) {
       </p>
 
       {!selectedSeries && (ovalSeries?.length ?? 0) > 0 && (
-        <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900 dark:bg-amber-950/20">
-          <h2 className="text-sm font-medium text-amber-900 dark:text-amber-100">
+        <section className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 dark:border-primary/40 dark:bg-primary/10">
+          <h2 className="text-sm font-medium text-foreground">
             Golden path — best race per week for SR (0 incidents)
           </h2>
           {isMock && (
-            <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+            <p className="mt-1 text-xs font-medium text-muted-foreground">
               Using fallback schedule — only sample series are shown. Connect to iRacing for the full list.
             </p>
           )}

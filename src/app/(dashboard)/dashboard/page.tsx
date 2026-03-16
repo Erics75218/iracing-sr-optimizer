@@ -109,11 +109,11 @@ export default async function DashboardPage({ searchParams }: Props) {
       )}
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       {isWeek13 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-700 dark:bg-amber-950/40">
-          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+        <div className="rounded-lg border-2 border-primary/40 bg-primary/10 px-4 py-3 dark:border-primary/50 dark:bg-primary/15">
+          <p className="text-sm font-medium text-foreground">
             It’s Week 13 in iRacing
           </p>
-          <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+          <p className="mt-1 text-sm text-muted-foreground">
             Weekly schedules are in flux during Week 13. Do not assume series and track lineups are correct until the new season starts.
           </p>
         </div>
@@ -135,8 +135,8 @@ export default async function DashboardPage({ searchParams }: Props) {
         </>
       )}
       {missingTracks.length > 0 && (
-        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
-          <h2 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+        <section className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 dark:border-primary/40 dark:bg-primary/10">
+          <h2 className="text-sm font-medium text-foreground">
             Track data missing for {missingTracks.length} schedule track{missingTracks.length !== 1 ? "s" : ""}
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -158,11 +158,11 @@ export default async function DashboardPage({ searchParams }: Props) {
         </section>
       )}
 
-      <section className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
-        <h2 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+      <section className="rounded-lg border-2 border-vaporwave/40 bg-vaporwave-muted/50 p-4 dark:border-vaporwave/50 dark:bg-vaporwave-muted/30">
+        <h2 className="text-sm font-medium text-foreground">
           About this app
         </h2>
-        <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+        <p className="mt-2 text-sm text-muted-foreground">
           This tool helps you view your iRacing licenses, Safety Rating and iRating by discipline, and see the current season schedule (Formula, Sports Car, Dirt Road) with golden-path suggestions for races that maximize potential corners for SR gain.
         </p>
       </section>

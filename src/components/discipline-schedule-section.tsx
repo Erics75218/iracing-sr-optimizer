@@ -32,7 +32,7 @@ export function DisciplineScheduleSection({
 
   return (
     <section
-      className={`rounded-lg border p-4 ${hasLiveData && !isMock ? "bg-green-50 dark:bg-green-950/30" : "bg-card"}`}
+      className={`rounded-lg border p-4 ${hasLiveData && !isMock ? "bg-primary/5 dark:bg-primary/10 border-primary/20" : "bg-card"}`}
     >
       <h2 className="text-sm font-medium">
         {selectedSeries ? "This week" : `${disciplineLabel} series`}

@@ -50,7 +50,7 @@ export function ProfileStatsCharts({ ratings }: { ratings: CategoryRatings }) {
         <div className="flex items-center gap-3">
           <div className="relative h-8 flex-1 overflow-hidden rounded bg-muted">
             <div
-              className="h-full rounded bg-blue-600 dark:bg-blue-500"
+              className="h-full rounded bg-primary"
               style={{ width: `${iratingPct}%` }}
             />
             {IRATING_LINES.map((line) => {
@@ -76,7 +76,7 @@ export function ProfileStatsCharts({ ratings }: { ratings: CategoryRatings }) {
         <div className="flex items-center gap-3">
           <div className="relative h-10 flex-1 overflow-hidden rounded bg-muted">
             <div
-              className="h-full rounded bg-emerald-600 dark:bg-emerald-500"
+              className="h-full rounded bg-vaporwave"
               style={{ width: `${srPct}%` }}
             />
             {SR_BREAKS.map(({ value }) => {
