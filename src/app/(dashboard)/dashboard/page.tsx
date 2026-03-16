@@ -163,10 +163,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           About this app
         </h2>
         <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
-          [Placeholder: Describe the application and its use case here. Edit this copy after the first pass.]
-        </p>
-        <p className="mt-1 text-xs text-blue-700/90 dark:text-blue-300/90">
-          General info: This tool helps you view your iRacing licenses, Safety Rating and iRating by discipline, and see the current season schedule (Formula, Sports Car, Dirt Road) with golden-path suggestions for races that maximize potential corners for SR gain.
+          This tool helps you view your iRacing licenses, Safety Rating and iRating by discipline, and see the current season schedule (Formula, Sports Car, Dirt Road) with golden-path suggestions for races that maximize potential corners for SR gain.
         </p>
       </section>
     </div>
