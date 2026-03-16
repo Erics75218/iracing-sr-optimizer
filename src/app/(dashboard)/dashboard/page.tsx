@@ -7,11 +7,8 @@ import { fetchCurrentSeasonSchedule } from "@/lib/fetch-schedule";
 import { fetchIracingTracks } from "@/lib/fetch-tracks";
 import { getEffectiveTrackIndex, getScheduleTracksMissingData } from "@/lib/missing-tracks";
 import { MOCK_SEASON } from "@/lib/mock-schedule";
-import { getRecommendations } from "@/lib/recommendations";
 import { getMergedTrackIndex, getTrackLayout } from "@/data/track-layouts";
 import type { IracingTrackIndexEntry } from "@/data/iracing-track-index";
-import { getDisciplineSortIndex } from "@/lib/discipline-order";
-import { RecommendationsList } from "@/components/recommendations-list";
 import { Button } from "@/components/ui/button";
 
 type Props = { searchParams: Promise<{ error?: string; missing?: string }> };
@@ -44,10 +41,8 @@ export default async function DashboardPage({ searchParams }: Props) {
   const productionRedirectNotApproved = params.error === "production_redirect_not_approved";
   const hasOauthError = Boolean(params.error);
 
-  // When connected, fetch live schedule + API track list; merge and add placeholders for any still-missing so we have no gaps
+  // When connected, fetch live schedule + API track list for missing-track detection
   const hasLiveData = apiTest.ok;
-  let recommendations: Awaited<ReturnType<typeof getRecommendations>>;
-  let isMockRecommendations = false;
   let currentSeason: Awaited<ReturnType<typeof fetchCurrentSeasonSchedule>> = null;
   let trackIndexEntries: IracingTrackIndexEntry[] | undefined;
 
@@ -62,30 +57,15 @@ export default async function DashboardPage({ searchParams }: Props) {
         ? getMergedTrackIndex(tracksResult.entries)
         : getMergedTrackIndex([]);
     trackIndexEntries = getEffectiveTrackIndex(currentSeason ?? null, merged);
-
-    recommendations = currentSeason
-      ? getRecommendations(currentSeason, {
-          limit: 10,
-          getTrackLayout: (id, config, name) => getTrackLayout(id, config, name, trackIndexEntries),
-        })
-      : getRecommendations(MOCK_SEASON, { limit: 5 });
-    isMockRecommendations = !currentSeason;
-  } else {
-    recommendations = getRecommendations(MOCK_SEASON, { limit: 5 });
-    isMockRecommendations = recommendations.length > 0;
   }
 
   const missingTracks = getScheduleTracksMissingData(currentSeason ?? null, trackIndexEntries);
 
+  // Only show Week 13 warning when the API explicitly indicates we're in week 13 (0-based: 12, or 1-based: 13).
   const isWeek13 =
-    (currentSeason?.series?.some((s) => s.current_race_week === 12) ?? false);
-
-  const sortedRecommendations = [...recommendations].sort((a, b) => {
-    const orderA = getDisciplineSortIndex(a.categoryId, a.seriesName);
-    const orderB = getDisciplineSortIndex(b.categoryId, b.seriesName);
-    if (orderA !== orderB) return orderA - orderB;
-    return (b.potentialCorners ?? b.score) - (a.potentialCorners ?? a.score);
-  });
+    (currentSeason?.series?.some(
+      (s) => s.current_race_week === 12 || s.current_race_week === 13
+    ) ?? false);
 
   return (
     <div className="space-y-6">
@@ -140,17 +120,14 @@ export default async function DashboardPage({ searchParams }: Props) {
       )}
       {iracingId ? (
         <p className="text-muted-foreground">
-          Schedule and recommendations for iRacing ID{" "}
+          Schedule and disciplines for iRacing ID{" "}
           <span className="font-medium text-foreground">{iracingId}</span>
-          {!isMockRecommendations && recommendations.length > 0
-            ? " — use the sidebar to open Formula, Sports Car, Oval, or other disciplines."
-            : "."}
+          {" — use the sidebar to open Formula, Sports Car, or Dirt Road."}
         </p>
       ) : (
         <>
           <p className="text-muted-foreground">
-            Enter your iRacing ID to get race recommendations for your Safety
-            Rating.
+            Enter your iRacing ID to see your licenses and race schedules by discipline.
           </p>
           <Button asChild>
             <Link href="/login">Enter iRacing ID</Link>
@@ -181,27 +158,16 @@ export default async function DashboardPage({ searchParams }: Props) {
         </section>
       )}
 
-      <section
-        className={`rounded-lg border p-4 ${hasLiveData && !isMockRecommendations ? "bg-green-50 dark:bg-green-950/30" : "bg-card"}`}
-      >
-        <h2 className="text-sm font-medium">SR-friendly recommendations</h2>
-        {isMockRecommendations && (
-          <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
-            Using fallback data — connect to iRacing for live schedule.
-          </p>
-        )}
-        <p className="mt-1 text-xs text-muted-foreground">
-          Races ranked by length and lap count to help maximize Safety Rating.
-          {hasLiveData && !isMockRecommendations && recommendations.length > 0 && (
-            <> · <span className="text-foreground/80">Live schedule</span></>
-          )}
+      <section className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+        <h2 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+          About this app
+        </h2>
+        <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+          [Placeholder: Describe the application and its use case here. Edit this copy after the first pass.]
         </p>
-        <div className="mt-3">
-          <RecommendationsList
-            recommendations={sortedRecommendations}
-            isMock={isMockRecommendations}
-          />
-        </div>
+        <p className="mt-1 text-xs text-blue-700/90 dark:text-blue-300/90">
+          General info: This tool helps you view your iRacing licenses, Safety Rating and iRating by discipline, and see the current season schedule (Formula, Sports Car, Dirt Road) with golden-path suggestions for races that maximize potential corners for SR gain.
+        </p>
       </section>
     </div>
   );
