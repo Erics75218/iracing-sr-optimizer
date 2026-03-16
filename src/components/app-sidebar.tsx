@@ -22,6 +22,11 @@ const LICENSE_CLASSES: Array<{
   { name: "Dirt Road", href: "/dashboard/dirt-road", ratingKey: "dirtRoad", expandableKey: "dirtRoad" },
 ];
 
+/** Sidebar shows only road-focused disciplines; Oval and Dirt Oval remain in code but are hidden from the menu. */
+const SIDEBAR_DISCIPLINES = LICENSE_CLASSES.filter(
+  (item) => item.ratingKey !== "oval" && item.ratingKey !== "dirtOval"
+);
+
 function RatingBadge({
   license_class,
   irating,
@@ -146,7 +151,7 @@ export function AppSidebar({
             )}
           </Link>
         )}
-        {LICENSE_CLASSES.map((item) => {
+        {SIDEBAR_DISCIPLINES.map((item) => {
           const isExpanded = expandedDiscipline === item.expandableKey;
           const isOnPage = pathname === item.href || pathname.startsWith(item.href + "?") || pathname.startsWith(item.href + "/");
           const seriesList = disciplineSeriesNames?.[item.expandableKey] ?? [];

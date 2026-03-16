@@ -1,9 +1,7 @@
 import { getIracingId } from "@/lib/auth";
 import { getAccessToken } from "@/lib/iracing-oauth";
-import { fetchMemberBestLaps } from "@/lib/fetch-member-best-laps";
 import { getMemberDisciplineRatings, getMemberDisplayName } from "@/lib/member-ratings";
 import type { CategoryRatings, DisciplineRatings } from "@/lib/member-ratings";
-import { ProfileBestLapsTable } from "@/components/profile-best-laps-table";
 import { ProfileLicenseStrip } from "@/components/profile-license-strip";
 import { ProfileStatsCharts } from "@/components/profile-stats-charts";
 
@@ -36,10 +34,6 @@ export default async function ProfilePage({ searchParams }: Props) {
     ? (licenseParam as keyof DisciplineRatings)
     : "formula";
   const selectedRatings: CategoryRatings | null = ratings ? ratings[selectedKey] : null;
-  const bestLaps =
-    accessToken && iracingId
-      ? await fetchMemberBestLaps(iracingId, accessToken, selectedKey)
-      : [];
 
   if (!accessToken || !iracingId) {
     return (
@@ -78,16 +72,6 @@ export default async function ProfilePage({ searchParams }: Props) {
           <ProfileStatsCharts ratings={selectedRatings} />
         </section>
       )}
-
-      <section className="rounded-lg border bg-card p-4">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          Best laps by car — {LICENSE_KEYS.find((l) => l.key === selectedKey)?.label}
-        </h2>
-        <ProfileBestLapsTable
-          rows={bestLaps}
-          licenseLabel={LICENSE_KEYS.find((l) => l.key === selectedKey)?.label ?? selectedKey}
-        />
-      </section>
     </div>
   );
 }

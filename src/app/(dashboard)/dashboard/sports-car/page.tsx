@@ -17,7 +17,6 @@ import { buildGetAvgLapTimeMs } from "@/lib/fetch-series-avg-lap";
 import { formatDisplayWeek } from "@/lib/format-week";
 import { GoldenPathRestore } from "@/components/golden-path-restore";
 import { GoldenPathSeriesSelector } from "@/components/golden-path-series-selector";
-import { RecommendationsList } from "@/components/recommendations-list";
 import { DisciplineScheduleSection } from "@/components/discipline-schedule-section";
 import { Suspense } from "react";
 
@@ -71,7 +70,7 @@ export default async function SportsCarPage({ searchParams }: Props) {
   const selectedGoldenIds =
     goldenIds != null && goldenIds.length > 0 ? goldenIds : null;
 
-  const { recommendations, avgLapTimeMap } = await getSectionRecommendations(accessToken ?? null, {
+  const { avgLapTimeMap } = await getSectionRecommendations(accessToken ?? null, {
     ...SPORTS_CAR_OPTIONS,
     ...(seriesFilter ? { seriesName: seriesFilter } : {}),
     season,
@@ -103,7 +102,7 @@ export default async function SportsCarPage({ searchParams }: Props) {
           ? `Series "${seriesFilter}" not found in schedule. Select one below.`
           : selectedSeries
             ? `Current week track and schedule for ${selectedSeries.series_name}.`
-            : "Select a Sports Car series for this week's track and schedule, or browse SR-friendly recommendations below."}
+            : "Select a Sports Car series for this week's track and schedule below."}
       </p>
 
       {!selectedSeries && (sportsCarSeries?.length ?? 0) > 0 && (
@@ -180,23 +179,6 @@ export default async function SportsCarPage({ searchParams }: Props) {
         isMock={isMock}
         trackIndexEntries={trackIndexEntries}
       />
-
-      <section className="rounded-lg border p-4 bg-card">
-        <h2 className="text-sm font-medium">SR-friendly recommendations</h2>
-        {isMock && (
-          <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
-            Using fallback data — connect to iRacing for live schedule.
-          </p>
-        )}
-        <p className="mt-1 text-xs text-muted-foreground">
-          {seriesFilter
-            ? `${selectedSeries?.series_name ?? seriesFilter} — this season.`
-            : "Sports Car races this season, ranked by length and lap count."}
-        </p>
-        <div className="mt-3">
-          <RecommendationsList recommendations={recommendations} isMock={isMock} />
-        </div>
-      </section>
     </div>
   );
 }
