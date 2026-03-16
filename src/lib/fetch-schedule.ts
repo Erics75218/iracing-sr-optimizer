@@ -10,15 +10,20 @@ import { cache } from "react";
 import { iracingDataGet } from "@/lib/iracing-api";
 import type { CategoryId, Season, Series, Session, Track } from "@/lib/iracing-types";
 
-/** Maps from series/get: series_id -> series_name and series_id -> category_id (1=oval, 2=road, 3=dirt oval, 4=dirt road). */
+const SERIES_CATEGORY_NAMES = ["formula_car", "sports_car", "oval", "dirt_oval", "dirt_road", "road"] as const;
+type SeriesCategoryString = (typeof SERIES_CATEGORY_NAMES)[number];
+
+/** Maps from series/get: series_id -> series_name, category_id, and category (string). */
 async function fetchSeriesMaps(token: string): Promise<{
   namesById: Map<number, string>;
   categoryById: Map<number, number>;
+  categoryNameById: Map<number, SeriesCategoryString>;
 }> {
   const result = await iracingDataGet<unknown>("series/get", { token });
   const namesById = new Map<number, string>();
   const categoryById = new Map<number, number>();
-  if (!result.ok) return { namesById, categoryById };
+  const categoryNameById = new Map<number, SeriesCategoryString>();
+  if (!result.ok) return { namesById, categoryById, categoryNameById };
   const raw = result.data;
   const arr = Array.isArray(raw) ? raw : (raw && typeof raw === "object" && "data" in (raw as object)) ? (raw as { data: unknown[] }).data : [];
   for (const item of arr as Record<string, unknown>[]) {
@@ -31,8 +36,14 @@ async function fetchSeriesMaps(token: string): Promise<{
     const cat = (item.category_id ?? item.categoryId) as number | string | undefined;
     const numCat = typeof cat === "number" ? cat : Number(cat);
     if (!Number.isNaN(numCat) && numCat >= 1 && numCat <= 4) categoryById.set(numId, numCat);
+    const catName = (item.category ?? item.categoryName) as string | undefined;
+    if (catName && typeof catName === "string") {
+      const normalized = catName.toLowerCase().replace(/-/g, "_") as string;
+      if (SERIES_CATEGORY_NAMES.includes(normalized as SeriesCategoryString))
+        categoryNameById.set(numId, normalized as SeriesCategoryString);
+    }
   }
-  return { namesById, categoryById };
+  return { namesById, categoryById, categoryNameById };
 }
 
 const CATEGORY_IDS: CategoryId[] = [1, 2, 3, 4];
@@ -188,7 +199,7 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
   }
   if (items.length === 0) return null;
 
-  const { namesById: seriesNamesById, categoryById: seriesCategoryById } = await fetchSeriesMaps(token);
+  const { namesById: seriesNamesById, categoryById: seriesCategoryById, categoryNameById: seriesCategoryNameById } = await fetchSeriesMaps(token);
 
   const first = items[0];
   const seasonId = first.season_id ?? first.seasonId ?? 0;
@@ -206,6 +217,7 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
     const categoryId = normCategoryId(
       item.category_id ?? item.categoryId ?? seriesCategoryById.get(seriesId)
     );
+    const categoryName = seriesCategoryNameById.get(seriesId);
     const currentRaceWeek = item.race_week ?? item.raceWeek;
     const rawSchedules =
       item.schedules ??
@@ -219,6 +231,7 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
       series_id: seriesId,
       series_name: seriesName,
       category_id: categoryId,
+      ...(categoryName != null && { category_name: categoryName }),
       ...(currentRaceWeek != null && { current_race_week: currentRaceWeek }),
       sessions,
     });

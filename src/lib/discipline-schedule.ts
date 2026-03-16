@@ -39,14 +39,17 @@ export function getSeriesCurrentWeekSession(series: Series): Session | null {
 }
 
 const SPORTS_CAR_PATTERN =
-  /GT|Porsche|Mazda|BMW|McLaren|Lamborghini|Ferrari|Touring|Sports Car|Production Car|Radical|Audi|Mercedes|Lexus|Cadillac|IMSA|WSC|LMP|GT3|GT4|13th Week (GT|Mazda|BMW|Porsche|Ferrari|Toyota|MX-5|GR86|M2)/i;
+  /GT|Porsche|Mazda|BMW|McLaren|Lamborghini|Ferrari|Touring|Sports Car|Production Car|Radical|Audi|Mercedes|Lexus|Cadillac|IMSA|WSC|LMP|GT3|GT4|Mustang|13th Week (GT|Mazda|BMW|Porsche|Ferrari|Toyota|MX-5|GR86|M2)/i;
 
 const ROAD_CATEGORY: CategoryId = 2;
 
-/** Get Sports Car series (road + GT/touring pattern). */
+/** Get Sports Car series: use API category_name when available, else name pattern. */
 export function getSportsCarSeries(season: Season | null): Series[] {
   if (!season?.series?.length) return [];
-  return season.series.filter(
-    (s) => s.category_id === ROAD_CATEGORY && SPORTS_CAR_PATTERN.test(s.series_name)
-  );
+  return season.series.filter((s) => {
+    if (s.category_id !== ROAD_CATEGORY) return false;
+    if (s.category_name === "sports_car") return true;
+    if (s.category_name === "formula_car") return false;
+    return SPORTS_CAR_PATTERN.test(s.series_name);
+  });
 }

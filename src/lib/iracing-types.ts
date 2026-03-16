@@ -27,10 +27,21 @@ export type Session = {
   duration_minutes?: number;
 };
 
+/** iRacing series category string from series/get (formula_car, sports_car, oval, dirt_oval, dirt_road). */
+export type SeriesCategoryName =
+  | "formula_car"
+  | "sports_car"
+  | "oval"
+  | "dirt_oval"
+  | "dirt_road"
+  | "road"; // legacy; use name patterns to split
+
 export type Series = {
   series_id: number;
   series_name: string;
   category_id: CategoryId;
+  /** From series/get when available; used to split Formula vs Sports Car (both category_id 2). */
+  category_name?: SeriesCategoryName;
   /** Current race week for this series (from API race_week); used for "this week's track" */
   current_race_week?: number;
   sessions?: Session[];

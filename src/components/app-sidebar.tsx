@@ -104,16 +104,31 @@ export function AppSidebar({
         >
           iRacing SR Optimizer
         </Link>
-        <div className="mb-4 rounded-md px-3 py-2">
+        <div
+          className={cn(
+            "mb-4 rounded-md px-3 py-2",
+            isConnected
+              ? "bg-green-100 dark:bg-green-950/50"
+              : "bg-red-100 dark:bg-red-950/50"
+          )}
+        >
           {isConnected ? (
             <a href="/api/auth/iracing/disconnect" className="block">
-              <Button variant="outline" size="sm" className="w-full">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+              >
                 Connected · Disconnect
               </Button>
             </a>
           ) : (
             <a href="/api/auth/iracing/authorize" className="block">
-              <Button variant="default" size="sm" className="w-full">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
+              >
                 Connect to iRacing
               </Button>
             </a>
