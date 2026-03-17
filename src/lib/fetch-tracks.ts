@@ -35,6 +35,14 @@ type ApiTrack = {
     corner_count?: number;
     num_corners?: number;
   }>;
+  package_id?: number;
+  packageId?: number;
+  free_with_subscription?: boolean;
+  freeWithSubscription?: boolean;
+  price_display?: string;
+  priceDisplay?: string;
+  purchasable?: boolean;
+  purchasable_as_add_on?: boolean;
 };
 
 const KM_TO_MILES = 0.621371;
@@ -89,6 +97,34 @@ function normalizeTrack(t: ApiTrack): IracingTrackIndexEntry[] {
   return entries;
 }
 
+export type TrackPurchaseMeta = {
+  track_id: number;
+  track_name: string;
+  package_id: number | null;
+  free_with_subscription: boolean;
+  purchasable: boolean;
+  price_display: string | null;
+};
+
+function normalizePurchaseMeta(t: ApiTrack): TrackPurchaseMeta | null {
+  const trackId = t.track_id ?? t.trackId;
+  if (trackId == null) return null;
+  const trackName =
+    t.track_name ?? (t as Record<string, string>).trackName ?? t.track_name_long ?? t.track_name_short ?? "";
+  const packageId = (t.package_id ?? t.packageId);
+  const free = Boolean(t.free_with_subscription ?? t.freeWithSubscription);
+  const purchasable = Boolean(t.purchasable ?? t.purchasable_as_add_on);
+  const price = (t.price_display ?? t.priceDisplay);
+  return {
+    track_id: Number(trackId),
+    track_name: String(trackName).trim() || `Track ${trackId}`,
+    package_id: typeof packageId === "number" ? packageId : null,
+    free_with_subscription: free,
+    purchasable,
+    price_display: typeof price === "string" && price.trim() ? price.trim() : null,
+  };
+}
+
 /**
  * Fetch all tracks and configs from iRacing API. Requires a valid auth token.
  * Returns normalized entries compatible with IRACING_TRACK_INDEX; merge or
@@ -96,14 +132,17 @@ function normalizeTrack(t: ApiTrack): IracingTrackIndexEntry[] {
  */
 export async function fetchIracingTracks(
   token: string
-): Promise<{ ok: true; entries: IracingTrackIndexEntry[] } | IracingApiError> {
+): Promise<{ ok: true; entries: IracingTrackIndexEntry[]; purchaseMetaById: Map<number, TrackPurchaseMeta> } | IracingApiError> {
   const result = await iracingDataGet<ApiTrack[]>("track/get", { token });
   if (!result.ok) return result;
   const raw = Array.isArray(result.data) ? result.data : [];
   const entries: IracingTrackIndexEntry[] = [];
+  const purchaseMetaById = new Map<number, TrackPurchaseMeta>();
   for (const t of raw) {
     const normalized = normalizeTrack(t);
     entries.push(...normalized);
+    const meta = normalizePurchaseMeta(t);
+    if (meta) purchaseMetaById.set(meta.track_id, meta);
   }
-  return { ok: true, entries };
+  return { ok: true, entries, purchaseMetaById };
 }

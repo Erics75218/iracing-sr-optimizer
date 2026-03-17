@@ -15,6 +15,7 @@ import { getSectionRecommendations } from "@/lib/get-section-recommendations";
 import { getGoldenPath } from "@/lib/golden-path";
 import { buildGetAvgLapTimeMs } from "@/lib/fetch-series-avg-lap";
 import { formatDisplayWeek } from "@/lib/format-week";
+import { fetchOwnedPackageIds } from "@/lib/member-content";
 import { GoldenPathRestore } from "@/components/golden-path-restore";
 import { GoldenPathSeriesSelector } from "@/components/golden-path-series-selector";
 import { DisciplineScheduleSection } from "@/components/discipline-schedule-section";
@@ -36,6 +37,7 @@ export default async function DirtRoadPage({ searchParams }: Props) {
     accessToken ? fetchCurrentSeasonSchedule(accessToken) : Promise.resolve(null),
     accessToken ? fetchIracingTracks(accessToken) : Promise.resolve({ ok: false as const, status: 401, error: "No token" }),
   ]);
+  const ownedPackageIds = accessToken ? await fetchOwnedPackageIds(accessToken) : new Set<number>();
   const effectiveSeason = season ?? MOCK_SEASON;
   const dirtRoadSeries = getSeriesByCategory(effectiveSeason, 4);
   const isMock = !season;
@@ -174,6 +176,8 @@ export default async function DirtRoadPage({ searchParams }: Props) {
         hasLiveData={hasLiveData}
         isMock={isMock}
         trackIndexEntries={trackIndexEntries}
+        trackPurchaseMetaById={tracksResult.ok ? tracksResult.purchaseMetaById : undefined}
+        ownedPackageIds={ownedPackageIds}
       />
     </div>
   );

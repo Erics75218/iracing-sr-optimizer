@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAccessToken } from "@/lib/iracing-oauth";
 import { iracingDataGet } from "@/lib/iracing-api";
-import { getCurrentSeasonYearQuarter, getSeasonItemsCount } from "@/lib/fetch-schedule";
+import { getCurrentSeasonYearQuarterFallback, getSeasonItemsCount } from "@/lib/fetch-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,8 @@ export async function GET() {
     );
   }
 
-  const { season_year, season_quarter } = getCurrentSeasonYearQuarter();
+  // Debug endpoint keeps using the fallback heuristic; schedule fetching uses lookup/current_season.
+  const { season_year, season_quarter } = getCurrentSeasonYearQuarterFallback();
   const out: {
     hasToken: boolean;
     season_year: number;

@@ -48,8 +48,8 @@ async function fetchSeriesMaps(token: string): Promise<{
 
 const CATEGORY_IDS: CategoryId[] = [1, 2, 3, 4];
 
-/** iRacing Season 1 = Dec–Mar, 2 = Mar–Jun, 3 = Jun–Sep, 4 = Sep–Dec. Returns { year, quarter } for "now". */
-export function getCurrentSeasonYearQuarter(): { season_year: number; season_quarter: number } {
+/** iRacing Season 1 = Dec–Mar, 2 = Mar–Jun, 3 = Jun–Sep, 4 = Sep–Dec. Best-effort fallback only. */
+export function getCurrentSeasonYearQuarterFallback(): { season_year: number; season_quarter: number } {
   const now = new Date();
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth() + 1; // 1–12
@@ -58,6 +58,50 @@ export function getCurrentSeasonYearQuarter(): { season_year: number; season_qua
   if (m <= 6) return { season_year: y, season_quarter: 2 };
   if (m <= 9) return { season_year: y, season_quarter: 3 };
   return { season_year: y, season_quarter: 4 };
+}
+
+type LookupCurrentSeasonItem = {
+  tag?: string;
+  lookups?: Array<{
+    lookup_type?: string;
+    lookup_values?: Array<{ description?: string; seq?: number; value?: string }>;
+  }>;
+};
+
+function extractCurrentSeasonFromLookup(raw: unknown): { season_year: number; season_quarter: number } | null {
+  if (!Array.isArray(raw)) return null;
+  // Look for lookup values that contain season_year and season_quarter.
+  // The API shape is a generic lookup list; we parse values when possible.
+  let year: number | null = null;
+  let quarter: number | null = null;
+  for (const item of raw as LookupCurrentSeasonItem[]) {
+    for (const lookup of item.lookups ?? []) {
+      for (const v of lookup.lookup_values ?? []) {
+        const desc = (v.description ?? "").toLowerCase();
+        const val = v.value;
+        if (!val) continue;
+        if (desc.includes("season year") || desc === "season_year") {
+          const n = parseInt(val, 10);
+          if (!Number.isNaN(n)) year = n;
+        }
+        if (desc.includes("season quarter") || desc.includes("season") && desc.includes("quarter") || desc === "season_quarter") {
+          const n = parseInt(val, 10);
+          if (!Number.isNaN(n)) quarter = n;
+        }
+      }
+    }
+  }
+  if (year != null && quarter != null && quarter >= 1 && quarter <= 4) return { season_year: year, season_quarter: quarter };
+  return null;
+}
+
+async function getCurrentSeasonYearQuarter(token: string): Promise<{ season_year: number; season_quarter: number }> {
+  const res = await iracingDataGet<unknown>("lookup/current_season", { token });
+  if (res.ok) {
+    const parsed = extractCurrentSeasonFromLookup(res.data);
+    if (parsed) return parsed;
+  }
+  return getCurrentSeasonYearQuarterFallback();
 }
 
 /** API response shape (camelCase from members-ng). Pass through any track fields the API returns. */
@@ -181,7 +225,7 @@ export function getSeasonItemsCount(data: unknown): number {
 
 /** Inner implementation: one API fetch. Used by cached wrapper. */
 async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | null> {
-  const { season_year, season_quarter } = getCurrentSeasonYearQuarter();
+  const { season_year, season_quarter } = await getCurrentSeasonYearQuarter(token);
   let result = await iracingDataGet<unknown>("series/seasons", {
     token,
     searchParams: {

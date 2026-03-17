@@ -3,6 +3,7 @@ import { formatDisplayWeek } from "@/lib/format-week";
 import { getTurnsPerMile, turnsPerMileFromTrack } from "@/data/track-layouts";
 import type { IracingTrackIndexEntry } from "@/data/iracing-track-index";
 import type { Series, Session } from "@/lib/iracing-types";
+import type { TrackPurchaseMeta } from "@/lib/fetch-tracks";
 
 type Props = {
   disciplineLabel: string;
@@ -15,6 +16,10 @@ type Props = {
   isMock: boolean;
   /** When connected, API + static merged track index for full coverage (turns per mile). */
   trackIndexEntries?: IracingTrackIndexEntry[];
+  /** Track purchase/licensing info keyed by track_id. */
+  trackPurchaseMetaById?: Map<number, TrackPurchaseMeta>;
+  /** Member owned package IDs. */
+  ownedPackageIds?: Set<number>;
 };
 
 export function DisciplineScheduleSection({
@@ -27,8 +32,31 @@ export function DisciplineScheduleSection({
   hasLiveData,
   isMock,
   trackIndexEntries,
+  trackPurchaseMetaById,
+  ownedPackageIds,
 }: Props) {
   const showList = !selectedSeries || seriesNotFound;
+
+  const purchaseBadge = (trackId: number) => {
+    const meta = trackPurchaseMetaById?.get(trackId);
+    if (!meta) return null;
+    const owned = meta.free_with_subscription || (meta.package_id != null && ownedPackageIds?.has(meta.package_id));
+    if (owned) {
+      return (
+        <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          <span aria-hidden="true">✓</span> Licensed
+        </span>
+      );
+    }
+    if (meta.price_display) {
+      return (
+        <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary">
+          {meta.price_display}
+        </span>
+      );
+    }
+    return null;
+  };
 
   return (
     <section
@@ -91,6 +119,7 @@ export function DisciplineScheduleSection({
                   ? ` — ${currentWeekSession.track.config_name}`
                   : ""}
               </p>
+              {purchaseBadge(currentWeekSession.track.track_id)}
               {currentWeekSession.duration_minutes != null && (
                 <p className="mt-1 text-sm text-muted-foreground">
                   Race length: {currentWeekSession.duration_minutes} min
@@ -124,6 +153,7 @@ export function DisciplineScheduleSection({
                   const tpm =
                     turnsPerMileFromTrack(t) ??
                     getTurnsPerMile(t.track_id, t.config_name, t.track_name, trackIndexEntries);
+                  const badge = purchaseBadge(t.track_id);
                   return (
                     <li
                       key={sess.race_week_num}
@@ -142,6 +172,7 @@ export function DisciplineScheduleSection({
                             · {tpm.toFixed(1)} turns/mi
                           </span>
                         )}
+                        {badge ? <span className="ml-2 align-middle">{badge}</span> : null}
                       </span>
                     </li>
                   );
