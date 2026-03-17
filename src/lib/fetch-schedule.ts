@@ -226,6 +226,8 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
       item.race_schedule ??
       [];
     const sessions: Session[] = Array.isArray(rawSchedules) ? rawSchedules.map(normSession) : [];
+    // Ensure schedules are displayed in Week 01 → Week 13 order regardless of API ordering.
+    sessions.sort((a, b) => a.race_week_num - b.race_week_num);
 
     seriesMap.set(key, {
       series_id: seriesId,
