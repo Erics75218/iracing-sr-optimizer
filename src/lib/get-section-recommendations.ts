@@ -12,6 +12,8 @@ import type { RaceRecommendation, Season } from "@/lib/iracing-types";
 
 export type SectionRecommendationsOptions = {
   categoryId?: number;
+  /** When provided, only these series_ids are included (ID-based). Preferred over seriesNamePattern. */
+  seriesIds?: number[];
   seriesNamePattern?: RegExp;
   seriesName?: string;
   limit?: number;

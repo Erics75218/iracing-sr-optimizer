@@ -10,7 +10,6 @@ import {
   getFormulaSeries,
   findSeriesByName,
   getSeriesCurrentWeekSession,
-  FORMULA_PATTERN,
 } from "@/lib/formula-section";
 import { getFormulaGoldenPath } from "@/lib/golden-path";
 import { buildGetAvgLapTimeMs } from "@/lib/fetch-series-avg-lap";
@@ -23,7 +22,6 @@ import { DisciplineScheduleSection } from "@/components/discipline-schedule-sect
 import { Suspense } from "react";
 
 const FORMULA_OPTIONS = {
-  seriesNamePattern: FORMULA_PATTERN,
   limit: 20,
 } as const;
 
@@ -73,6 +71,7 @@ export default async function FormulaPage({ searchParams }: Props) {
 
   const { avgLapTimeMap } = await getSectionRecommendations(accessToken ?? null, {
     ...FORMULA_OPTIONS,
+    seriesIds: formulaSeries.map((s) => s.series_id),
     ...(seriesFilter ? { seriesName: seriesFilter } : {}),
     season,
   });

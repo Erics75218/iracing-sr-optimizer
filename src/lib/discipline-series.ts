@@ -6,13 +6,10 @@
  */
 
 import { fetchCurrentSeasonSchedule } from "@/lib/fetch-schedule";
-import { FORMULA_PATTERN, getFormulaSeries } from "@/lib/formula-section";
+import { getFormulaSeries } from "@/lib/formula-section";
 import { getSportsCarSeries } from "@/lib/discipline-schedule";
 import { iracingDataGet } from "@/lib/iracing-api";
 import type { CategoryId, Series, SeriesCategoryName } from "@/lib/iracing-types";
-
-const SPORTS_CAR_PATTERN =
-  /GT|Porsche|Mazda|BMW|McLaren|Lamborghini|Ferrari|Touring|Sports Car|Production Car|Radical|Audi|Mercedes|Lexus|Cadillac|IMSA|WSC|LMP|GT3|GT4|Mustang|13th Week (GT|Mazda|BMW|Porsche|Ferrari|Toyota|MX-5|GR86|M2)/i;
 
 const CATEGORY_NAMES = ["formula_car", "sports_car", "oval", "dirt_oval", "dirt_road", "road"] as const;
 
@@ -20,18 +17,14 @@ function uniqueSorted(names: string[]): string[] {
   return [...new Set(names)].filter(Boolean).sort((a, b) => a.localeCompare(b));
 }
 
+/** Formula = road (2) with API category_name "formula_car" only (series_id–driven). */
 function isFormulaSeries(s: Series): boolean {
-  if (s.category_id !== 2) return false;
-  if (s.category_name === "formula_car") return true;
-  if (s.category_name === "sports_car") return false;
-  return FORMULA_PATTERN.test(s.series_name);
+  return s.category_id === 2 && s.category_name === "formula_car";
 }
 
+/** Sports Car = road (2) with API category_name "sports_car" only (series_id–driven). */
 function isSportsCarSeries(s: Series): boolean {
-  if (s.category_id !== 2) return false;
-  if (s.category_name === "sports_car") return true;
-  if (s.category_name === "formula_car") return false;
-  return SPORTS_CAR_PATTERN.test(s.series_name);
+  return s.category_id === 2 && s.category_name === "sports_car";
 }
 
 function seriesNamesForCategory(series: Series[], categoryId: CategoryId): string[] {

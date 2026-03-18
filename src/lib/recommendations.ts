@@ -90,6 +90,8 @@ function seriesNameMatches(filter: string, apiName: string): boolean {
 
 export type GetRecommendationsOptions = {
   categoryId?: number;
+  /** When provided, only series with these series_ids are included (ID-based filter). */
+  seriesIds?: number[];
   seriesNamePattern?: RegExp;
   seriesName?: string;
   limit?: number;
@@ -102,6 +104,7 @@ export type GetRecommendationsOptions = {
 /** Build recommendations from a season. Includes potential corners, risk, and 1–5 SR Potential Score. */
 export function getRecommendations(season: Season, options?: GetRecommendationsOptions): RaceRecommendation[] {
   const categoryId = options?.categoryId;
+  const seriesIds = options?.seriesIds;
   const seriesNamePattern = options?.seriesNamePattern;
   const seriesName = options?.seriesName?.trim();
   const limit = options?.limit ?? 10;
@@ -111,6 +114,7 @@ export function getRecommendations(season: Season, options?: GetRecommendationsO
 
   for (const series of season.series ?? []) {
     if (categoryId != null && series.category_id !== categoryId) continue;
+    if (seriesIds != null && seriesIds.length > 0 && !seriesIds.includes(series.series_id)) continue;
     if (seriesNamePattern != null && !seriesNamePattern.test(series.series_name)) continue;
     if (seriesName != null && seriesName !== "" && !seriesNameMatches(seriesName, series.series_name)) continue;
     for (const session of series.sessions ?? []) {

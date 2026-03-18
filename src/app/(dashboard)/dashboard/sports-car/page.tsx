@@ -22,8 +22,6 @@ import { DisciplineScheduleSection } from "@/components/discipline-schedule-sect
 import { Suspense } from "react";
 
 const SPORTS_CAR_OPTIONS = {
-  seriesNamePattern:
-    /GT|Porsche|Mazda|BMW|McLaren|Lamborghini|Ferrari|Touring|Sports Car|Production Car|Radical|Audi|Mercedes|Lexus|Cadillac|IMSA|WSC|LMP|GT3|GT4/i,
   limit: 20,
 } as const;
 
@@ -74,6 +72,7 @@ export default async function SportsCarPage({ searchParams }: Props) {
 
   const { avgLapTimeMap } = await getSectionRecommendations(accessToken ?? null, {
     ...SPORTS_CAR_OPTIONS,
+    seriesIds: sportsCarSeries.map((s) => s.series_id),
     ...(seriesFilter ? { seriesName: seriesFilter } : {}),
     season,
   });
