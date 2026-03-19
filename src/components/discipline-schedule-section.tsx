@@ -91,7 +91,7 @@ export function DisciplineScheduleSection({
             disciplineSeries.map((s) => (
               <li key={`${s.series_id}-${s.series_name}`}>
                 <Link
-                  href={`${basePath}?series=${encodeURIComponent(s.series_name)}`}
+                  href={`${basePath}?series_id=${encodeURIComponent(String(s.series_id))}&series=${encodeURIComponent(s.series_name)}`}
                   className="block rounded-md px-2 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                 >
                   {s.series_name}

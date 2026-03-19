@@ -5,7 +5,7 @@
 
 import type { Season, Series } from "./iracing-types";
 
-export { findSeriesByName, getSeriesCurrentWeekSession } from "./discipline-schedule";
+export { findSeriesByName, findSeriesById, getSeriesCurrentWeekSession } from "./discipline-schedule";
 
 /** Category id: 2 = road. Formula = road + category_name "formula_car" from API. */
 const ROAD_CATEGORY = 2;

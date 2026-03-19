@@ -24,6 +24,15 @@ export function findSeriesByName(season: Season | null, name: string): Series | 
   return null;
 }
 
+/** Find series by exact series_id. */
+export function findSeriesById(season: Season | null, seriesId: number): Series | null {
+  if (!season?.series?.length || Number.isNaN(seriesId)) return null;
+  for (const s of season.series) {
+    if (s.series_id === seriesId) return s;
+  }
+  return null;
+}
+
 /** Get the session for the current race week, or the latest session if unknown. */
 export function getSeriesCurrentWeekSession(series: Series): Session | null {
   const sessions = series.sessions ?? [];

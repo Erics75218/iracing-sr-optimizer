@@ -8,6 +8,7 @@ import { getMergedTrackIndex, getTrackLayout } from "@/data/track-layouts";
 import { MOCK_SEASON } from "@/lib/mock-schedule";
 import {
   getSportsCarSeries,
+  findSeriesById,
   findSeriesByName,
   getSeriesCurrentWeekSession,
 } from "@/lib/discipline-schedule";
@@ -25,7 +26,7 @@ const SPORTS_CAR_OPTIONS = {
   limit: 20,
 } as const;
 
-type Props = { searchParams: Promise<{ series?: string; golden?: string | string[] }> };
+type Props = { searchParams: Promise<{ series?: string; series_id?: string; golden?: string | string[] }> };
 
 export default async function SportsCarPage({ searchParams }: Props) {
   const cookieStore = await cookies();
@@ -48,13 +49,18 @@ export default async function SportsCarPage({ searchParams }: Props) {
 
   const params = await searchParams;
   const seriesFilter = params.series?.trim();
-  const selectedSeries = seriesFilter
-    ? findSeriesByName(effectiveSeason, seriesFilter)
-    : null;
+  const selectedSeriesId =
+    params.series_id != null ? parseInt(String(params.series_id), 10) : NaN;
+  const selectedSeries =
+    !Number.isNaN(selectedSeriesId)
+      ? findSeriesById(effectiveSeason, selectedSeriesId)
+      : seriesFilter
+        ? findSeriesByName(effectiveSeason, seriesFilter)
+        : null;
   const currentWeekSession = selectedSeries
     ? getSeriesCurrentWeekSession(selectedSeries)
     : null;
-  const seriesNotFound = Boolean(seriesFilter && !selectedSeries);
+  const seriesNotFound = Boolean((seriesFilter || !Number.isNaN(selectedSeriesId)) && !selectedSeries);
 
   const rawGolden = params.golden;
   const goldenIds: number[] | null =

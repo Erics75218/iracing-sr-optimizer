@@ -12,6 +12,10 @@ import type { CategoryId, Season, Series, Session, Track } from "@/lib/iracing-t
 
 const SERIES_CATEGORY_NAMES = ["formula_car", "sports_car", "oval", "dirt_oval", "dirt_road", "road"] as const;
 type SeriesCategoryString = (typeof SERIES_CATEGORY_NAMES)[number];
+/** Force canonical season_schedule source for known series with mismatched series/seasons payloads. */
+const SERIES_SEASON_OVERRIDES: Record<number, number> = {
+  540: 6133, // FIA F4 Esports Regional Tour - Asia Pacific
+};
 
 /** Maps from series/get: series_id -> series_name, category_id, and category (string). */
 async function fetchSeriesMaps(token: string): Promise<{
@@ -404,6 +408,38 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
   for (const row of seasonList) {
     seriesIdToSeasonId.set(row.series_id, row.season_id);
   }
+
+  const removeSeriesById = (sid: number) => {
+    for (const [key, value] of seriesMap.entries()) {
+      if (value.series_id === sid) seriesMap.delete(key);
+    }
+  };
+
+  // Apply hard overrides first so these series always come from canonical season_schedule.
+  for (const [sidStr, forcedSeasonId] of Object.entries(SERIES_SEASON_OVERRIDES)) {
+    const sid = Number(sidStr);
+    if (Number.isNaN(sid)) continue;
+    const scheduleItems = await fetchSeasonSchedule(token, forcedSeasonId);
+    const forSeries = scheduleItems.filter((i) => (i.series_id ?? i.seriesId) === sid);
+    if (forSeries.length === 0) continue;
+    const currentRaceWeek = inferCurrentRaceWeekNumFromSeasonScheduleItems(forSeries);
+    const sessions: Session[] = forSeries.map(normSessionFromSeasonScheduleItem);
+    sessions.sort((a, b) => a.race_week_num - b.race_week_num);
+    const catName = seriesCategoryNameById.get(sid);
+    const seriesName = seriesNamesById.get(sid) ?? forSeries[0]?.series_name ?? forSeries[0]?.seriesName ?? "Unknown";
+    const categoryId = normCategoryId(seriesCategoryById.get(sid));
+    removeSeriesById(sid);
+    seriesMap.set(seriesKey(sid, forcedSeasonId), {
+      series_id: sid,
+      series_name: seriesName,
+      category_id: categoryId,
+      ...(catName != null && { category_name: catName }),
+      sessions,
+      ...(currentRaceWeek != null && { current_race_week: currentRaceWeek }),
+    });
+    existingSeriesIds.add(sid);
+  }
+
   const categoriesToBackfill: SeriesCategoryString[] = ["formula_car", "sports_car", "oval", "dirt_oval", "dirt_road", "road"];
   for (const [sid, catName] of seriesCategoryNameById) {
     if (!categoriesToBackfill.includes(catName) || existingSeriesIds.has(sid)) continue;
