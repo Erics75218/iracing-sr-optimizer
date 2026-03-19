@@ -343,6 +343,12 @@ function inferCurrentRaceWeekNumFromSeasonScheduleItems(items: ApiSeasonSchedule
 /** Inner implementation: one API fetch. Used by cached wrapper. */
 async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | null> {
   const { season_year, season_quarter } = await getCurrentSeasonYearQuarter(token);
+  let seasonId = 0;
+  let seasonYear = season_year;
+  let seasonQuarter = season_quarter;
+
+  // Best-effort metadata from series/seasons (season id/year/quarter).
+  let items: ApiSeasonItem[] = [];
   let result = await iracingDataGet<unknown>("series/seasons", {
     token,
     searchParams: {
@@ -350,86 +356,63 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
       season_quarter: String(season_quarter),
     },
   });
-  if (!result.ok) return null;
-
-  let items = toSeasonItems(result.data);
+  if (result.ok) items = toSeasonItems(result.data);
   if (items.length === 0) {
     result = await iracingDataGet<unknown>("series/seasons", { token });
-    if (!result.ok) return null;
-    items = toSeasonItems(result.data);
+    if (result.ok) items = toSeasonItems(result.data);
   }
-  if (items.length === 0) return null;
+  if (items.length > 0) {
+    const first = items[0];
+    seasonId = first.season_id ?? first.seasonId ?? seasonId;
+    seasonYear = first.season_year ?? first.seasonYear ?? seasonYear;
+    seasonQuarter = first.season_quarter ?? first.seasonQuarter ?? seasonQuarter;
+  }
 
   const { namesById: seriesNamesById, categoryById: seriesCategoryById, categoryNameById: seriesCategoryNameById } = await fetchSeriesMaps(token);
 
-  const first = items[0];
-  const seasonId = first.season_id ?? first.seasonId ?? 0;
-  const seasonYear = first.season_year ?? first.seasonYear ?? season_year;
-  const seasonQuarter = first.season_quarter ?? first.seasonQuarter ?? season_quarter;
-
   const seriesKey = (sid: number, sId: number) => `${sId}-${sid}`;
   const seriesMap = new Map<string, Series>();
-  for (const item of items) {
-    const seriesId = item.series_id ?? item.seriesId ?? 0;
-    const itemSeasonId = item.season_id ?? item.seasonId ?? 0;
-    const key = seriesKey(seriesId, itemSeasonId);
-    const seriesName =
-      (item.series_name ?? item.seriesName ?? seriesNamesById.get(seriesId)) ?? "Unknown";
-    const categoryId = normCategoryId(
-      item.category_id ?? item.categoryId ?? seriesCategoryById.get(seriesId)
-    );
-    const categoryName = seriesCategoryNameById.get(seriesId);
-    const currentRaceWeek = item.race_week ?? item.raceWeek;
-    const rawSchedules =
-      item.schedules ??
-      item.schedule ??
-      item.raceSchedule ??
-      item.race_schedule ??
-      [];
-    const sessions: Session[] = Array.isArray(rawSchedules) ? rawSchedules.map(normSession) : [];
-    // Ensure schedules are displayed in Week 01 → Week 13 order regardless of API ordering.
-    sessions.sort((a, b) => a.race_week_num - b.race_week_num);
 
-    seriesMap.set(key, {
-      series_id: seriesId,
-      series_name: seriesName,
-      category_id: categoryId,
-      ...(categoryName != null && { category_name: categoryName }),
-      ...(currentRaceWeek != null && { current_race_week: currentRaceWeek }),
-      sessions,
-    });
-  }
-
-  // Backfill series missing from series/seasons (e.g. Formula F4 Regional Asia Pacific #540)
-  // using series/season_list + series/season_schedule for the same year/quarter.
-  const existingSeriesIds = new Set(Array.from(seriesMap.values()).map((s) => s.series_id));
+  // Canonical mapping for the quarter.
   const seasonList = await fetchSeasonList(token, seasonYear, seasonQuarter);
   const seriesIdToSeasonId = new Map<number, number>();
   for (const row of seasonList) {
     seriesIdToSeasonId.set(row.series_id, row.season_id);
   }
-
-  const removeSeriesById = (sid: number) => {
-    for (const [key, value] of seriesMap.entries()) {
-      if (value.series_id === sid) seriesMap.delete(key);
+  // Fallback mapping if season_list is unavailable.
+  if (seriesIdToSeasonId.size === 0) {
+    for (const item of items) {
+      const sid = item.series_id ?? item.seriesId;
+      const sId = item.season_id ?? item.seasonId;
+      if (sid != null && sId != null) seriesIdToSeasonId.set(sid, sId);
     }
-  };
-
-  // Apply hard overrides first so these series always come from canonical season_schedule.
+  }
+  // Hard overrides (e.g. 540->6133).
   for (const [sidStr, forcedSeasonId] of Object.entries(SERIES_SEASON_OVERRIDES)) {
     const sid = Number(sidStr);
-    if (Number.isNaN(sid)) continue;
-    const scheduleItems = await fetchSeasonSchedule(token, forcedSeasonId);
+    if (!Number.isNaN(sid)) seriesIdToSeasonId.set(sid, forcedSeasonId);
+  }
+
+  // Fetch each season schedule once.
+  const seasonScheduleById = new Map<number, ApiSeasonScheduleItem[]>();
+  const uniqueSeasonIds = [...new Set(Array.from(seriesIdToSeasonId.values()))];
+  for (const sId of uniqueSeasonIds) {
+    seasonScheduleById.set(sId, await fetchSeasonSchedule(token, sId));
+    if (seasonId === 0) seasonId = sId;
+  }
+
+  // Build all series from canonical season_schedule source.
+  for (const [sid, sId] of seriesIdToSeasonId) {
+    const scheduleItems = seasonScheduleById.get(sId) ?? [];
     const forSeries = scheduleItems.filter((i) => (i.series_id ?? i.seriesId) === sid);
     if (forSeries.length === 0) continue;
     const currentRaceWeek = inferCurrentRaceWeekNumFromSeasonScheduleItems(forSeries);
     const sessions: Session[] = forSeries.map(normSessionFromSeasonScheduleItem);
     sessions.sort((a, b) => a.race_week_num - b.race_week_num);
-    const catName = seriesCategoryNameById.get(sid);
     const seriesName = seriesNamesById.get(sid) ?? forSeries[0]?.series_name ?? forSeries[0]?.seriesName ?? "Unknown";
     const categoryId = normCategoryId(seriesCategoryById.get(sid));
-    removeSeriesById(sid);
-    seriesMap.set(seriesKey(sid, forcedSeasonId), {
+    const catName = seriesCategoryNameById.get(sid);
+    seriesMap.set(seriesKey(sid, sId), {
       series_id: sid,
       series_name: seriesName,
       category_id: categoryId,
@@ -437,35 +420,33 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
       sessions,
       ...(currentRaceWeek != null && { current_race_week: currentRaceWeek }),
     });
-    existingSeriesIds.add(sid);
   }
 
-  const categoriesToBackfill: SeriesCategoryString[] = ["formula_car", "sports_car", "oval", "dirt_oval", "dirt_road", "road"];
-  for (const [sid, catName] of seriesCategoryNameById) {
-    if (!categoriesToBackfill.includes(catName) || existingSeriesIds.has(sid)) continue;
-    const backfillSeasonId = seriesIdToSeasonId.get(sid);
-    if (backfillSeasonId == null) continue;
-    const scheduleItems = await fetchSeasonSchedule(token, backfillSeasonId);
-    const forSeries = scheduleItems.filter(
-      (i) => (i.series_id ?? i.seriesId) === sid
-    );
-    if (forSeries.length === 0) continue;
-    const currentRaceWeek = inferCurrentRaceWeekNumFromSeasonScheduleItems(forSeries);
-    const sessions: Session[] = forSeries.map(normSessionFromSeasonScheduleItem);
-    sessions.sort((a, b) => a.race_week_num - b.race_week_num);
-    const seriesName = seriesNamesById.get(sid) ?? forSeries[0]?.series_name ?? forSeries[0]?.seriesName ?? "Unknown";
-    const categoryId = normCategoryId(seriesCategoryById.get(sid));
-    const key = seriesKey(sid, backfillSeasonId);
-    seriesMap.set(key, {
-      series_id: sid,
-      series_name: seriesName,
-      category_id: categoryId,
-      ...(catName != null && { category_name: catName }),
-      sessions,
-      ...(currentRaceWeek != null && { current_race_week: currentRaceWeek }),
-    });
-    existingSeriesIds.add(sid);
+  // Last-resort fallback.
+  if (seriesMap.size === 0 && items.length > 0) {
+    for (const item of items) {
+      const sid = item.series_id ?? item.seriesId ?? 0;
+      const sId = item.season_id ?? item.seasonId ?? seasonId;
+      const rawSchedules = item.schedules ?? item.schedule ?? item.raceSchedule ?? item.race_schedule ?? [];
+      const sessions: Session[] = Array.isArray(rawSchedules) ? rawSchedules.map(normSession) : [];
+      sessions.sort((a, b) => a.race_week_num - b.race_week_num);
+      if (sessions.length === 0) continue;
+      const seriesName = (item.series_name ?? item.seriesName ?? seriesNamesById.get(sid)) ?? "Unknown";
+      const categoryId = normCategoryId(item.category_id ?? item.categoryId ?? seriesCategoryById.get(sid));
+      const catName = seriesCategoryNameById.get(sid);
+      const currentRaceWeek = item.race_week ?? item.raceWeek;
+      seriesMap.set(seriesKey(sid, sId), {
+        series_id: sid,
+        series_name: seriesName,
+        category_id: categoryId,
+        ...(catName != null && { category_name: catName }),
+        ...(currentRaceWeek != null && { current_race_week: currentRaceWeek }),
+        sessions,
+      });
+    }
   }
+
+  if (seriesMap.size === 0) return null;
 
   return {
     season_id: seasonId,
