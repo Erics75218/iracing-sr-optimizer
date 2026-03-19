@@ -73,6 +73,7 @@ export function AppSidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedSeriesName = searchParams.get("series") ?? null;
+  const selectedSeriesId = searchParams.get("series_id") ?? null;
   const [expandedDiscipline, setExpandedDiscipline] = useState<keyof DisciplineSeriesNames | null>(() => {
     if (pathname.startsWith("/dashboard/formula")) return "formula";
     if (pathname.startsWith("/dashboard/sports-car")) return "sportsCar";
@@ -197,14 +198,15 @@ export function AppSidebar({
               {isExpanded && (
                 <ul className="ml-3 flex flex-col gap-0.5 border-l-2 border-muted pl-2">
                   {seriesList.length > 0 ? (
-                    seriesList.map((seriesName) => {
+                    seriesList.map((seriesItem) => {
                       const isSelected =
-                        selectedSeriesName != null &&
-                        decodeURIComponent(selectedSeriesName).trim() === seriesName.trim();
+                        (selectedSeriesId != null && Number(selectedSeriesId) === seriesItem.series_id) ||
+                        (selectedSeriesName != null &&
+                          decodeURIComponent(selectedSeriesName).trim() === seriesItem.series_name.trim());
                       return (
-                        <li key={seriesName}>
+                        <li key={seriesItem.series_id}>
                           <Link
-                            href={`${item.href}?series=${encodeURIComponent(seriesName)}`}
+                            href={`${item.href}?series_id=${encodeURIComponent(String(seriesItem.series_id))}&series=${encodeURIComponent(seriesItem.series_name)}`}
                             className={cn(
                               "block rounded px-2 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground",
                               isSelected
@@ -212,7 +214,7 @@ export function AppSidebar({
                                 : "text-muted-foreground"
                             )}
                           >
-                            {seriesName}
+                            {seriesItem.series_name}
                           </Link>
                         </li>
                       );

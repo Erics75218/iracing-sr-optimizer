@@ -13,8 +13,12 @@ import type { CategoryId, Series, SeriesCategoryName } from "@/lib/iracing-types
 
 const CATEGORY_NAMES = ["formula_car", "sports_car", "oval", "dirt_oval", "dirt_road", "road"] as const;
 
-function uniqueSorted(names: string[]): string[] {
-  return [...new Set(names)].filter(Boolean).sort((a, b) => a.localeCompare(b));
+export type DisciplineSeriesItem = { series_id: number; series_name: string };
+
+function uniqueSortedSeries(items: DisciplineSeriesItem[]): DisciplineSeriesItem[] {
+  const byId = new Map<number, DisciplineSeriesItem>();
+  for (const it of items) byId.set(it.series_id, it);
+  return [...byId.values()].sort((a, b) => a.series_name.localeCompare(b.series_name));
 }
 
 /** Formula = road (2) with API category_name "formula_car" only (series_id–driven). */
@@ -27,30 +31,30 @@ function isSportsCarSeries(s: Series): boolean {
   return s.category_id === 2 && s.category_name === "sports_car";
 }
 
-function seriesNamesForCategory(series: Series[], categoryId: CategoryId): string[] {
-  const names: string[] = [];
+function seriesItemsForCategory(series: Series[], categoryId: CategoryId): DisciplineSeriesItem[] {
+  const items: DisciplineSeriesItem[] = [];
   for (const s of series) {
-    if (s.category_id === categoryId) names.push(s.series_name);
+    if (s.category_id === categoryId) items.push({ series_id: s.series_id, series_name: s.series_name });
   }
-  return uniqueSorted(names);
+  return uniqueSortedSeries(items);
 }
 
 /** category_id: 1=oval, 2=road, 3=dirt oval, 4=dirt road */
 export type DisciplineSeriesNames = {
-  formula: string[];
-  sportsCar: string[];
-  oval: string[];
-  dirtOval: string[];
-  dirtRoad: string[];
+  formula: DisciplineSeriesItem[];
+  sportsCar: DisciplineSeriesItem[];
+  oval: DisciplineSeriesItem[];
+  dirtOval: DisciplineSeriesItem[];
+  dirtRoad: DisciplineSeriesItem[];
 };
 
 function buildFromSeries(series: Series[]): DisciplineSeriesNames {
   return {
-    formula: uniqueSorted(series.filter(isFormulaSeries).map((s) => s.series_name)),
-    sportsCar: uniqueSorted(series.filter(isSportsCarSeries).map((s) => s.series_name)),
-    oval: seriesNamesForCategory(series, 1),
-    dirtOval: seriesNamesForCategory(series, 3),
-    dirtRoad: seriesNamesForCategory(series, 4),
+    formula: uniqueSortedSeries(series.filter(isFormulaSeries).map((s) => ({ series_id: s.series_id, series_name: s.series_name }))),
+    sportsCar: uniqueSortedSeries(series.filter(isSportsCarSeries).map((s) => ({ series_id: s.series_id, series_name: s.series_name }))),
+    oval: seriesItemsForCategory(series, 1),
+    dirtOval: seriesItemsForCategory(series, 3),
+    dirtRoad: seriesItemsForCategory(series, 4),
   };
 }
 
@@ -97,11 +101,11 @@ export async function getDisciplineSeriesNames(
   if (season?.series?.length) {
     const series = season.series;
     return {
-      formula: uniqueSorted(getFormulaSeries(season).map((s) => s.series_name)),
-      sportsCar: uniqueSorted(getSportsCarSeries(season).map((s) => s.series_name)),
-      oval: seriesNamesForCategory(series, 1),
-      dirtOval: seriesNamesForCategory(series, 3),
-      dirtRoad: seriesNamesForCategory(series, 4),
+      formula: uniqueSortedSeries(getFormulaSeries(season).map((s) => ({ series_id: s.series_id, series_name: s.series_name }))),
+      sportsCar: uniqueSortedSeries(getSportsCarSeries(season).map((s) => ({ series_id: s.series_id, series_name: s.series_name }))),
+      oval: seriesItemsForCategory(series, 1),
+      dirtOval: seriesItemsForCategory(series, 3),
+      dirtRoad: seriesItemsForCategory(series, 4),
     };
   }
   const fallbackSeries = await getSeriesFromApi(accessToken);
