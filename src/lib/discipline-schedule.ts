@@ -20,7 +20,6 @@ export function findSeriesByName(season: Season | null, name: string): Series | 
   if (!q || !season?.series?.length) return null;
   for (const s of season.series) {
     if (s.series_name === q) return s;
-    if (s.series_name.includes(q) || q.includes(s.series_name)) return s;
   }
   return null;
 }
