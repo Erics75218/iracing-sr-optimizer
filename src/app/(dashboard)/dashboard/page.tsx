@@ -19,8 +19,7 @@ function buildOAuthCallbackUrl(hostHeader: string | null, protoHeader: string | 
   const parts = host.split(":");
   const port = parts[1] ?? (proto === "https" ? "443" : "3000");
   const hostname = parts[0];
-  const baseHost = hostname === "localhost" ? "127.0.0.1" : hostname;
-  return `${proto}://${baseHost}:${port}/api/auth/iracing/callback`;
+  return `${proto}://${hostname}:${port}/api/auth/iracing/callback`;
 }
 
 export default async function DashboardPage({ searchParams }: Props) {

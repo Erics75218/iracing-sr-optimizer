@@ -12,9 +12,10 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  const redirectUri = isLocal
-    ? (process.env.IRACING_REDIRECT_URI ?? "http://127.0.0.1:3000/api/auth/iracing/callback")
-    : (process.env.IRACING_REDIRECT_URI ?? `${url.origin}/api/auth/iracing/callback`);
+  const isLocalHost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const redirectUri = isLocalHost
+    ? `${url.origin}/api/auth/iracing/callback`
+    : (process.env.IRACING_REDIRECT_URI?.trim() || `${url.origin}/api/auth/iracing/callback`);
 
   const isProduction = url.hostname === "iracing-sr-optimizer.vercel.app" || url.hostname.endsWith(".vercel.app");
   const productionApproved = process.env.IRACING_PRODUCTION_URI_APPROVED === "true";

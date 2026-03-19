@@ -32,10 +32,11 @@ export async function GET(request: NextRequest) {
     return res;
   }
 
-  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  const redirectUri = isLocal
-    ? (process.env.IRACING_REDIRECT_URI ?? "http://127.0.0.1:3000/api/auth/iracing/callback")
-    : (process.env.IRACING_REDIRECT_URI ?? `${origin}/api/auth/iracing/callback`);
+  // Use request origin for local so cookies are set on the same host we started on.
+  const isLocalHost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const redirectUri = isLocalHost
+    ? `${origin}/api/auth/iracing/callback`
+    : (process.env.IRACING_REDIRECT_URI?.trim() || `${origin}/api/auth/iracing/callback`);
 
   // Prefer verifier from signed state (works when cookies aren't sent, e.g. localhost vs 127.0.0.1)
   let verifier =

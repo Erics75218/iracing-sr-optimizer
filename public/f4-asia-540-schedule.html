@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Formula F4 Asia Pacific (Series 540) Schedule</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #0b1220;
+        --panel: rgba(255, 255, 255, 0.06);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.65);
+        --border: rgba(255, 255, 255, 0.12);
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        background: radial-gradient(1200px 600px at 20% 0%, rgba(56, 189, 248, 0.25), transparent 55%),
+          radial-gradient(900px 500px at 90% 10%, rgba(167, 139, 250, 0.25), transparent 60%), var(--bg);
+        color: var(--text);
+        padding: 28px 18px;
+      }
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 8px 0;
+        font-size: 20px;
+        letter-spacing: 0.2px;
+      }
+      .subtitle {
+        margin: 0 0 18px 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .pill {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        padding: 10px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      td {
+        font-size: 14px;
+      }
+      .track-name {
+        font-weight: 650;
+      }
+      .config {
+        margin-top: 3px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .error {
+        color: #ffb4b4;
+        white-space: pre-wrap;
+        font-size: 13px;
+      }
+      .loading {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 14px;
+        line-height: 1.4;
+      }
+      .btn {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 9px 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Formula F4 Asia Pacific Schedule</h1>
+      <p class="subtitle">
+        Series <b>540</b>. This page calls the app’s debug endpoint <code>/api/debug/f4-asia-raw</code> and renders
+        the API’s <code>race_week_num</code> + track layout. If you’re not connected, you’ll need to log in via the app
+        first so cookies are present.
+      </p>
+
+      <div class="panel">
+        <div class="row">
+          <div class="pill" id="pillSeason">Season: (loading)</div>
+          <div class="pill" id="pillCount">Weeks: (loading)</div>
+          <button class="btn" id="btnRefresh" type="button">Refresh</button>
+        </div>
+
+        <div id="status" class="loading">Loading schedule…</div>
+        <div id="error" class="error" style="display:none;"></div>
+
+        <table aria-label="F4 Asia Pacific schedule table">
+          <thead>
+            <tr>
+              <th style="width: 120px;">Week</th>
+              <th>Track</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+
+        <div class="small">
+          Note: ownership (“Licensed” vs package price) is handled elsewhere (via <code>track/get</code> and
+          <code>member/info</code>). This page is schedule-only.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const SERIES_ID = 540;
+
+      const $status = document.getElementById("status");
+      const $error = document.getElementById("error");
+      const $tbody = document.getElementById("tbody");
+      const $pillSeason = document.getElementById("pillSeason");
+      const $pillCount = document.getElementById("pillCount");
+      const $btnRefresh = document.getElementById("btnRefresh");
+
+      function setError(msg) {
+        $status.style.display = "none";
+        $error.style.display = "block";
+        $error.textContent = msg;
+      }
+
+      function setLoading(text) {
+        $error.style.display = "none";
+        $status.style.display = "block";
+        $status.textContent = text;
+      }
+
+      function renderSchedule(data) {
+        const weeks = data.scheduleForF4AsiaByWeek || [];
+        weeks.sort((a, b) => (a.race_week_num ?? 0) - (b.race_week_num ?? 0));
+
+        $tbody.innerHTML = "";
+        for (const item of weeks) {
+          const week = item.race_week_num ?? "";
+          const trackName = item.track_name ?? "Unknown";
+          const config = item.config_name ?? null;
+
+          const tr = document.createElement("tr");
+          const tdWeek = document.createElement("td");
+          tdWeek.textContent = week;
+          const tdTrack = document.createElement("td");
+
+          const divName = document.createElement("div");
+          divName.className = "track-name";
+          divName.textContent = trackName;
+
+          const divConfig = document.createElement("div");
+          divConfig.className = "config";
+          divConfig.textContent = config ? `Config: ${config}` : "";
+
+          tdTrack.appendChild(divName);
+          tdTrack.appendChild(divConfig);
+
+          tr.appendChild(tdWeek);
+          tr.appendChild(tdTrack);
+          $tbody.appendChild(tr);
+        }
+
+        const seasonYear = data.seasonYear ?? null;
+        const seasonQuarter = data.seasonQuarter ?? null;
+        if (seasonYear != null && seasonQuarter != null) {
+          $pillSeason.textContent = `Season: ${seasonYear} Q${seasonQuarter}`;
+        } else if (data.apiSeasonId != null) {
+          $pillSeason.textContent = `Season_id: ${data.apiSeasonId}`;
+        }
+
+        $pillCount.textContent = `Weeks: ${weeks.length}`;
+      }
+
+      async function load() {
+        $btnRefresh.disabled = true;
+        try {
+          setLoading("Loading schedule…");
+          const res = await fetch("/api/debug/f4-asia-raw", {
+            method: "GET",
+            credentials: "include",
+          });
+
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || json.ok === false) {
+            const err =
+              json?.hint ||
+              json?.error ||
+              `HTTP ${res.status}`;
+            setError(
+              `Request failed for series ${SERIES_ID}.\n\n${err}\n\n` +
+                `Tip: Connect to iRacing in the app first so the debug endpoint can access your iRacing cookies.`
+            );
+            return;
+          }
+
+          renderSchedule(json);
+          $status.style.display = "none";
+        } catch (e) {
+          setError(String(e));
+        } finally {
+          $btnRefresh.disabled = false;
+        }
+      }
+
+      $btnRefresh.addEventListener("click", load);
+      load();
+    </script>
+  </body>
+</html>
+

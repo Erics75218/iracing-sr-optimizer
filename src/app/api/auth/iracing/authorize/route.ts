@@ -25,11 +25,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(dashboardUrl);
   }
 
-  // Use fixed redirect URI so iRacing (which has one URL registered) accepts it. Open the app at that same URL (e.g. http://127.0.0.1:3000).
-  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  const redirectUri = isLocal
-    ? (process.env.IRACING_REDIRECT_URI ?? "http://127.0.0.1:3000/api/auth/iracing/callback")
-    : (process.env.IRACING_REDIRECT_URI ?? `${url.origin}/api/auth/iracing/callback`);
+  // Use the same origin as the request so the callback lands on the same host (localhost vs 127.0.0.1) and cookies work.
+  // Important: when running locally, ignore IRACING_REDIRECT_URI even if set, otherwise we may redirect back to a different host.
+  const isLocalHost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const redirectUri = isLocalHost
+    ? `${url.origin}/api/auth/iracing/callback`
+    : (process.env.IRACING_REDIRECT_URI?.trim() || `${url.origin}/api/auth/iracing/callback`);
   const { verifier, challenge } = generatePkce();
   const existingIracingId = request.cookies.get(IRACING_ID_COOKIE)?.value?.trim() ?? null;
   const state = createStateWithVerifier(verifier, clientSecret, existingIracingId);
