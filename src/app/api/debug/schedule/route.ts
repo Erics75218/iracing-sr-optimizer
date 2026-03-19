@@ -5,14 +5,15 @@
  */
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getAccessToken } from "@/lib/iracing-oauth";
+import { getValidAccessToken } from "@/lib/iracing-oauth";
 import { fetchCurrentSeasonSchedule } from "@/lib/fetch-schedule";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const cookieStore = await cookies();
-  const token = getAccessToken(cookieStore);
+  const tokenResult = await getValidAccessToken(cookieStore);
+  const token = tokenResult.token;
   if (!token) {
     return NextResponse.json(
       { error: "Not connected", hint: "Connect to iRacing first, then hit this URL again." },
@@ -41,7 +42,7 @@ export async function GET() {
       totalSessions += n;
     }
 
-    return NextResponse.json({
+    const out = NextResponse.json({
       ok: true,
       seriesCount: series.length,
       seriesWithSessions,
@@ -49,6 +50,14 @@ export async function GET() {
       seasonYear: season.season_year,
       seasonQuarter: season.season_quarter,
     });
+
+    if (tokenResult.setCookies) {
+      for (const c of tokenResult.setCookies) {
+        out.cookies.set(c.name, c.value, c.options as any);
+      }
+    }
+
+    return out;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(

@@ -7,7 +7,7 @@
  */
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getAccessToken } from "@/lib/iracing-oauth";
+import { getValidAccessToken } from "@/lib/iracing-oauth";
 import { iracingDataGet } from "@/lib/iracing-api";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,8 @@ const SEASON_ID_F4_ASIA = 6133;
 
 export async function GET(req: Request) {
   const cookieStore = await cookies();
-  let token = getAccessToken(cookieStore);
+  const tokenResult = await getValidAccessToken(cookieStore);
+  let token = tokenResult.token;
   if (!token) {
     const url = new URL(req.url);
     const qToken = url.searchParams.get("token")?.trim();
@@ -72,7 +73,7 @@ export async function GET(req: Request) {
           (b.race_week_num ?? b.raceWeekNum ?? 0)
       );
 
-    return NextResponse.json({
+    const out = NextResponse.json({
       message: "Raw iRacing API response for season_schedule(6133), filtered to series_id 540",
       apiSeasonId: data?.season_id ?? SEASON_ID_F4_ASIA,
       apiSuccess: data?.success ?? null,
@@ -86,6 +87,14 @@ export async function GET(req: Request) {
       })),
       rawFullResponse: data,
     });
+
+    if ("setCookies" in tokenResult && tokenResult.setCookies) {
+      for (const c of tokenResult.setCookies) {
+        out.cookies.set(c.name, c.value, c.options as any);
+      }
+    }
+
+    return out;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

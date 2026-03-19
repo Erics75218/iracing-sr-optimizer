@@ -5,7 +5,7 @@
  */
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getAccessToken } from "@/lib/iracing-oauth";
+import { getValidAccessToken } from "@/lib/iracing-oauth";
 import { iracingDataGet } from "@/lib/iracing-api";
 import { getCurrentSeasonYearQuarterFallback, getSeasonItemsCount } from "@/lib/fetch-schedule";
 
@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const cookieStore = await cookies();
-  const token = getAccessToken(cookieStore);
+  const tokenResult = await getValidAccessToken(cookieStore);
+  const token = tokenResult.token;
   if (!token) {
     return NextResponse.json(
       { error: "Not connected", hint: "Connect to iRacing first, then open this URL in the same browser." },
@@ -107,5 +108,11 @@ export async function GET() {
     out.theory = "Schedule fetch should work; if UI still empty, check cache (unstable_cache) or layout vs page token.";
   }
 
-  return NextResponse.json(out);
+  const resp = NextResponse.json(out);
+  if (tokenResult.setCookies) {
+    for (const c of tokenResult.setCookies) {
+      resp.cookies.set(c.name, c.value, c.options as any);
+    }
+  }
+  return resp;
 }
