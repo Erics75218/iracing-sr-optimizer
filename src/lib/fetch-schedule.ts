@@ -243,6 +243,10 @@ type ApiSeasonScheduleItem = {
   seriesName?: string;
   race_week_num?: number;
   raceWeekNum?: number;
+  start_date?: string;
+  startDate?: string;
+  week_end_time?: string;
+  weekEndTime?: string;
   track?: ApiScheduleItem["track"];
   race_time_descriptors?: { session_minutes?: number }[];
   raceTimeDescriptors?: { sessionMinutes?: number }[];
@@ -299,6 +303,37 @@ function normSessionFromSeasonScheduleItem(item: ApiSeasonScheduleItem): Session
     track,
     duration_minutes: sessionMinutes,
   };
+}
+
+/**
+ * Infer "current race week" by comparing now with schedule start/end times.
+ * Used for backfilled series where iRacing's series/seasons payload may omit current week.
+ */
+function inferCurrentRaceWeekNumFromSeasonScheduleItems(items: ApiSeasonScheduleItem[]): number | null {
+  const nowMs = Date.now();
+  const withTimes = items
+    .map((i) => {
+      const week = (i.race_week_num ?? i.raceWeekNum) ?? 0;
+      const start = i.start_date ?? i.startDate;
+      const end = i.week_end_time ?? i.weekEndTime;
+      const startMs = typeof start === "string" ? Date.parse(start) : NaN;
+      const endMs = typeof end === "string" ? Date.parse(end) : NaN;
+      return { week, startMs, endMs };
+    })
+    .filter((r) => Number.isFinite(r.startMs) && Number.isFinite(r.endMs));
+
+  if (withTimes.length === 0) return null;
+  // Prefer the week where we are currently inside the window.
+  const current = withTimes.find((w) => nowMs >= w.startMs && nowMs <= w.endMs);
+  if (current) return current.week;
+
+  // Before first week starts: show week 0 (earliest start).
+  const sortedByStart = withTimes.slice().sort((a, b) => a.startMs - b.startMs);
+  if (nowMs < sortedByStart[0]?.startMs) return sortedByStart[0]?.week ?? null;
+
+  // After last week ends: show the latest.
+  const sortedByEnd = withTimes.slice().sort((a, b) => b.endMs - a.endMs);
+  return sortedByEnd[0]?.week ?? null;
 }
 
 /** Inner implementation: one API fetch. Used by cached wrapper. */
@@ -379,6 +414,7 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
       (i) => (i.series_id ?? i.seriesId) === sid
     );
     if (forSeries.length === 0) continue;
+    const currentRaceWeek = inferCurrentRaceWeekNumFromSeasonScheduleItems(forSeries);
     const sessions: Session[] = forSeries.map(normSessionFromSeasonScheduleItem);
     sessions.sort((a, b) => a.race_week_num - b.race_week_num);
     const seriesName = seriesNamesById.get(sid) ?? forSeries[0]?.series_name ?? forSeries[0]?.seriesName ?? "Unknown";
@@ -390,6 +426,7 @@ async function fetchCurrentSeasonScheduleInner(token: string): Promise<Season | 
       category_id: categoryId,
       ...(catName != null && { category_name: catName }),
       sessions,
+      ...(currentRaceWeek != null && { current_race_week: currentRaceWeek }),
     });
     existingSeriesIds.add(sid);
   }
