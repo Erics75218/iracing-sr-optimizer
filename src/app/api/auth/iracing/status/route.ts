@@ -10,8 +10,13 @@ export async function GET(request: NextRequest) {
   const configured = hasId && hasSecret;
   const url = new URL(request.url);
   const isLocalHost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+
+  const productionCallback =
+    process.env.IRACING_PRODUCTION_REDIRECT_URI?.trim() ||
+    "https://iracing-sr-optimizer.vercel.app/api/auth/iracing/callback";
+
   const redirectUri = isLocalHost
-    ? `${url.origin}/api/auth/iracing/callback`
+    ? productionCallback
     : (process.env.IRACING_REDIRECT_URI?.trim() || `${url.origin}/api/auth/iracing/callback`);
   return NextResponse.json({
     configured,

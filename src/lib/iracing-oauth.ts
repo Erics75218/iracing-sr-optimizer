@@ -22,6 +22,11 @@ export const IRACING_OAUTH = {
   VERIFIER_COOKIE: "iracing_oauth_verifier",
   /** Cookie that stores state for CSRF (short-lived). */
   STATE_COOKIE: "iracing_oauth_state",
+  /**
+   * Cookie used to securely "import" an OAuth token back into the local origin when
+   * we intentionally use a non-local redirect_uri (e.g. production redirect for iRacing).
+   */
+  IMPORT_NONCE_COOKIE: "iracing_oauth_import_nonce",
   ACCESS_TOKEN_COOKIE: "iracing_access_token",
   REFRESH_TOKEN_COOKIE: "iracing_refresh_token",
   EXPIRES_AT_COOKIE: "iracing_expires_at",
@@ -46,14 +51,28 @@ const STATE_PAYLOAD_PREFIX = "v1.";
 export function createStateWithVerifier(
   verifier: string,
   secret: string,
-  iracingId?: string | null
+  iracingId?: string | null,
+  returnOrigin?: string | null,
+  importNonce?: string | null
 ): string {
-  const payload: { rnd: string; verifier: string; iracingId?: string } = {
+  const payload: {
+    rnd: string;
+    verifier: string;
+    iracingId?: string;
+    returnOrigin?: string;
+    importNonce?: string;
+  } = {
     rnd: randomBytes(16).toString("hex"),
     verifier,
   };
   if (iracingId != null && String(iracingId).trim() !== "") {
     payload.iracingId = String(iracingId).trim();
+  }
+  if (returnOrigin != null && String(returnOrigin).trim() !== "") {
+    payload.returnOrigin = String(returnOrigin).trim();
+  }
+  if (importNonce != null && String(importNonce).trim() !== "") {
+    payload.importNonce = String(importNonce).trim();
   }
   const payloadB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   const sig = createHmac("sha256", secret).update(payloadB64).digest("base64url");
@@ -78,10 +97,24 @@ export function getIracingIdFromState(state: string, secret: string): string | n
   return id === "" ? null : id;
 }
 
+export function getReturnOriginFromState(state: string, secret: string): string | null {
+  const payload = getStatePayload(state, secret);
+  if (!payload || typeof payload.returnOrigin !== "string") return null;
+  const o = String(payload.returnOrigin).trim();
+  return o === "" ? null : o;
+}
+
+export function getImportNonceFromState(state: string, secret: string): string | null {
+  const payload = getStatePayload(state, secret);
+  if (!payload || typeof payload.importNonce !== "string") return null;
+  const n = String(payload.importNonce).trim();
+  return n === "" ? null : n;
+}
+
 function getStatePayload(
   state: string,
   secret: string
-): { verifier?: string; iracingId?: string } | null {
+): { verifier?: string; iracingId?: string; returnOrigin?: string; importNonce?: string } | null {
   if (!state || !secret || !state.startsWith(STATE_PAYLOAD_PREFIX)) return null;
   const rest = state.slice(STATE_PAYLOAD_PREFIX.length);
   const dot = rest.indexOf(".");
@@ -94,6 +127,8 @@ function getStatePayload(
     return JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as {
       verifier?: string;
       iracingId?: string;
+      returnOrigin?: string;
+      importNonce?: string;
     };
   } catch {
     return null;

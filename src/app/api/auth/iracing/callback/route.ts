@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { IRACING_ID_COOKIE, IRACING_ID_COOKIE_OPTIONS } from "@/lib/auth";
 import { iracingDataGet } from "@/lib/iracing-api";
-import { exchangeCode, getVerifierFromState, getIracingIdFromState, IRACING_OAUTH } from "@/lib/iracing-oauth";
+import {
+  exchangeCode,
+  getVerifierFromState,
+  getIracingIdFromState,
+  getReturnOriginFromState,
+  getImportNonceFromState,
+  IRACING_OAUTH,
+} from "@/lib/iracing-oauth";
 
 /**
  * iRacing OAuth callback: exchange code for tokens, set cookies, redirect to dashboard.
@@ -32,11 +39,10 @@ export async function GET(request: NextRequest) {
     return res;
   }
 
-  // Use request origin for local so cookies are set on the same host we started on.
-  const isLocalHost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  const redirectUri = isLocalHost
-    ? `${origin}/api/auth/iracing/callback`
-    : (process.env.IRACING_REDIRECT_URI?.trim() || `${origin}/api/auth/iracing/callback`);
+  // redirect_uri used in /authorize must match exactly this callback URL.
+  // When we start OAuth from localhost we intentionally use the production redirect URI,
+  // so this callback will also be invoked on the production origin.
+  const redirectUri = `${origin}/api/auth/iracing/callback`;
 
   // Prefer verifier from signed state (works when cookies aren't sent, e.g. localhost vs 127.0.0.1)
   let verifier =
@@ -68,18 +74,44 @@ export async function GET(request: NextRequest) {
     });
     const expiresAt = String(Math.floor(Date.now() / 1000) + (data.expires_in ?? 600));
     const opts = { ...IRACING_OAUTH.COOKIE_OPTIONS, maxAge: 60 * 60 * 24 * 30, secure };
-    // Return 200 + HTML redirect so Safari (and others) persist Set-Cookie before navigating.
-    // Safari often does not store cookies when they are sent with a 307 redirect response.
-    const res = new NextResponse(redirectHtml(dashboardUrl.toString()), {
-      status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
-    clearOAuthCookies(res, secure); // clear verifier/state
-    res.cookies.set(IRACING_OAUTH.ACCESS_TOKEN_COOKIE, data.access_token, opts);
-    res.cookies.set(IRACING_OAUTH.EXPIRES_AT_COOKIE, expiresAt, opts);
-    if (data.refresh_token) {
-      res.cookies.set(IRACING_OAUTH.REFRESH_TOKEN_COOKIE, data.refresh_token, opts);
-    }
+
+    const returnOrigin =
+      state && clientSecret ? getReturnOriginFromState(state, clientSecret) : null;
+    const importNonce =
+      state && clientSecret ? getImportNonceFromState(state, clientSecret) : null;
+
+    // If we started from localhost, we import the token back into the local origin.
+    // Otherwise we fall back to the original behavior: set cookies here and redirect to /dashboard.
+    const shouldImportToReturnOrigin =
+      returnOrigin != null &&
+      typeof returnOrigin === "string" &&
+      returnOrigin.includes("://") &&
+      importNonce != null &&
+      importNonce !== "";
+
+    const res = shouldImportToReturnOrigin
+      ? new NextResponse(
+          redirectHtml(
+            buildImportUrl({
+              returnOrigin: returnOrigin!,
+              accessToken: data.access_token,
+              expiresAt,
+              refreshToken: data.refresh_token,
+              iracingId: "", // filled after member/info
+              nonce: importNonce!,
+            })
+          ),
+          {
+            status: 200,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          }
+        )
+      : new NextResponse(redirectHtml(dashboardUrl.toString()), {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+
+    clearOAuthCookies(res, secure); // clear verifier/state on this origin
 
     // Keep iRacing ID: prefer cust_id from API, then ID we stored in state (so Connect doesn't drop it when callback has no cookies), then existing cookie
     const idFromState = state && clientSecret ? getIracingIdFromState(state, clientSecret) : null;
@@ -90,12 +122,41 @@ export async function GET(request: NextRequest) {
     if (memberResult.ok && memberResult.data?.cust_id != null) {
       idToSet = String(memberResult.data.cust_id);
     }
-    if (idToSet) {
+    if (idToSet && !shouldImportToReturnOrigin) {
+      // Normal flow: keep iRacing ID cookie on this origin.
       res.cookies.set(IRACING_ID_COOKIE, idToSet, { ...IRACING_ID_COOKIE_OPTIONS, secure });
     }
     // Debug: where did the ID come from? (state = from OAuth state, cookie = from request, api = from member/info)
     const idSource = memberResult.ok && memberResult.data?.cust_id != null ? "api" : idFromState ? "state" : existingIracingId ? "cookie" : "none";
     res.headers.set("X-Debug-ID-Source", idSource);
+
+    if (!shouldImportToReturnOrigin) {
+      res.cookies.set(IRACING_OAUTH.ACCESS_TOKEN_COOKIE, data.access_token, opts);
+      res.cookies.set(IRACING_OAUTH.EXPIRES_AT_COOKIE, expiresAt, opts);
+      if (data.refresh_token) {
+        res.cookies.set(IRACING_OAUTH.REFRESH_TOKEN_COOKIE, data.refresh_token, opts);
+      }
+    }
+
+    // Import flow: rebuild import URL now that we know iRacing ID.
+    if (shouldImportToReturnOrigin && idToSet) {
+      return new NextResponse(
+        redirectHtml(
+          buildImportUrl({
+            returnOrigin: returnOrigin!,
+            accessToken: data.access_token,
+            expiresAt,
+            refreshToken: data.refresh_token,
+            iracingId: idToSet,
+            nonce: importNonce!,
+          })
+        ),
+        {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }
+      );
+    }
 
     return res;
   } catch (err) {
@@ -116,4 +177,21 @@ function redirectHtml(dashboardUrl: string): string {
 function clearOAuthCookies(res: NextResponse, secure = false) {
   res.cookies.set(IRACING_OAUTH.VERIFIER_COOKIE, "", { path: "/", maxAge: 0, secure });
   res.cookies.set(IRACING_OAUTH.STATE_COOKIE, "", { path: "/", maxAge: 0, secure });
+}
+
+function buildImportUrl(params: {
+  returnOrigin: string;
+  accessToken: string;
+  expiresAt: string;
+  refreshToken?: string;
+  iracingId: string;
+  nonce: string;
+}): string {
+  const u = new URL("/api/auth/iracing/import", params.returnOrigin);
+  u.searchParams.set("access_token", params.accessToken);
+  u.searchParams.set("expires_at", params.expiresAt);
+  if (params.refreshToken) u.searchParams.set("refresh_token", params.refreshToken);
+  u.searchParams.set("iracing_id", params.iracingId);
+  u.searchParams.set("nonce", params.nonce);
+  return u.toString();
 }
