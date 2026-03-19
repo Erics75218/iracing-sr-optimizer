@@ -179,7 +179,9 @@
 
         $tbody.innerHTML = "";
         for (const item of weeks) {
-          const week = item.race_week_num ?? "";
+          const rawWeek = item.race_week_num ?? null;
+          const weekNum = item.week_num ?? (rawWeek == null ? null : Number(rawWeek) + 1);
+          const week = weekNum == null ? "" : String(weekNum).padStart(2, "0");
           const trackName = item.track_name ?? "Unknown";
           const config = item.config_name ?? null;
 

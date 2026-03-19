@@ -80,7 +80,9 @@ export async function GET(req: Request) {
       totalScheduleItemsInSeason: schedules.length,
       itemsForSeries540: forF4Asia.length,
       scheduleForF4AsiaByWeek: byWeek.map((s) => ({
+        // iRacing API is 0-based. We also provide a 1-based display value for readability.
         race_week_num: s.race_week_num ?? s.raceWeekNum,
+        week_num: ((s.race_week_num ?? s.raceWeekNum ?? 0) as number) + 1,
         track_id: s.track?.track_id,
         track_name: s.track?.track_name ?? s.track?.trackName,
         config_name: s.track?.config_name ?? s.track?.configName ?? null,

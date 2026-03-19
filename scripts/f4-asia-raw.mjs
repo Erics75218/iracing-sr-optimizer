@@ -48,6 +48,7 @@ async function main() {
     items_for_series_540: f4.length,
     schedule_by_week: byWeek.map((s) => ({
       race_week_num: s.race_week_num ?? s.raceWeekNum,
+      week_num: ((s.race_week_num ?? s.raceWeekNum ?? 0) + 1),
       track_id: s.track?.track_id,
       track_name: s.track?.track_name ?? s.track?.trackName,
       config_name: s.track?.config_name ?? s.track?.configName ?? null,
